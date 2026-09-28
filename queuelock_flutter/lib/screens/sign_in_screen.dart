@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:serverpod_auth_idp_flutter/serverpod_auth_idp_flutter.dart';
 
 import '../client.dart';
+import '../theme.dart';
 
+/// Staff sign-in gate: branded card framing the auth widget, with the
+/// same staggered entrance as the rest of the app.
 class SignInScreen extends StatefulWidget {
   final Widget child;
   const SignInScreen({super.key, required this.child});
@@ -35,29 +39,99 @@ class _SignInScreenState extends State<SignInScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
+    if (_isSignedIn) return widget.child;
 
-    return _isSignedIn
-        ? widget.child
-        : Center(
-            child: SignInWidget(
-              client: client,
-              onAuthenticated: () {
-                context.showSnackBar(
-                  message: 'User authenticated.',
-                  backgroundColor: colors.primaryContainer,
-                  foregroundColor: colors.onPrimaryContainer,
-                );
-              },
-              onError: (error) {
-                context.showSnackBar(
-                  message: 'Authentication failed: $error',
-                  backgroundColor: colors.errorContainer,
-                  foregroundColor: colors.onErrorContainer,
-                );
-              },
-            ),
-          );
+    final colors = Theme.of(context).colorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: dark
+              ? [AppTheme.pine, AppTheme.darkBackground]
+              : [const Color(0xFFDCE8D2), AppTheme.cream],
+        ),
+      ),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                ...AnimateList(
+                interval: 110.ms,
+                effects: [
+                  FadeEffect(duration: 350.ms, curve: Curves.easeOutCubic),
+                  const SlideEffect(
+                    begin: Offset(0, 0.12),
+                    duration: Duration(milliseconds: 350),
+                    curve: Curves.easeOutCubic,
+                  ),
+                ],
+                children: [
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: const ShapeDecoration(
+                      color: AppTheme.pine,
+                      shape: StadiumBorder(),
+                    ),
+                    child: const Icon(
+                      Icons.storefront_outlined,
+                      color: Colors.white,
+                      size: 36,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Staff sign-in',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'One account owns your queues. Customers never see this '
+                    'page — they join with just a nickname.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: colors.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: 20),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: SignInWidget(
+                        client: client,
+                        buttonStyle: const SignInButtonStyle(
+                          backgroundColor: AppTheme.pine,
+                          foregroundColor: Colors.white,
+                          shape: SignInButtonShape.rounded,
+                        ),
+                        onAuthenticated: () {
+                          context.showSnackBar(
+                            message: 'User authenticated.',
+                            backgroundColor: colors.primaryContainer,
+                            foregroundColor: colors.onPrimaryContainer,
+                          );
+                        },
+                        onError: (error) {
+                          context.showSnackBar(
+                            message: 'Authentication failed: $error',
+                            backgroundColor: colors.errorContainer,
+                            foregroundColor: colors.onErrorContainer,
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
