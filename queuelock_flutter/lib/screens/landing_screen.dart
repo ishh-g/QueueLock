@@ -41,6 +41,11 @@ class LandingScreen extends StatelessWidget {
                 'Joining a queue? Open the QR link from the venue '
                 '(it looks like /q/some-queue). No app install, no account.',
               ),
+              const SizedBox(height: 12),
+              const Text(
+                'Anyone can audit a queue: open /audit/<queue-link-name> to '
+                'verify its public tamper-evident log.',
+              ),
             ],
           ),
         ),

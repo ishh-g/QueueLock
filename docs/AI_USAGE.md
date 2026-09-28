@@ -49,3 +49,11 @@ Disclosed per the hackathon rules (AI-tool use must be in the submission text).
   via the `serverpod_future_call` row. Finding: the `withServerpod`
   test server does not execute future calls, so a real wall-clock
   expiry cannot be tested there (logged in `serverpod-feedback.md`).
+
+## M4 (Sep 28, 2026)
+
+- Same tool. Used for: audit page, dashboard QR, best-effort call
+  alert, polish pass.
+- New dependencies: `qr_flutter` (spec section 13 names it), `web` +
+  `flutter_web_plugins` interop for vibrate/beep "when the browser
+  allows".

@@ -51,6 +51,18 @@ tamper-evident ledger lets anyone audit the run.
 - Proven: tests 4 (schedule row + sweeper re-entry at index 3 + skip +
   idempotent re-runs), 5 (grace ordering unit), 6 (estimator unit).
 
+## Features (M4: audit + polish done)
+
+- Public `/audit/:slug` page: chain status (verified count or first bad
+  seq), paginated entry list, "check my receipt" box.
+- QR join link on the staff dashboard (`qr_flutter`), built from the
+  page origin so it works on any host.
+- Best-effort call alert (vibration + beep where the browser allows;
+  the banner remains the reliable signal).
+- Loading/empty/error/reconnect states on every screen; mobile-first
+  constrained layouts.
+- Proven: `flutter build web` succeeds; server suite still 40/40.
+
 ## How Serverpod is used (M0)
 
 - `serverpod create` scaffold: `queuelock_server`, generated

@@ -4,6 +4,7 @@ import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:go_router/go_router.dart';
 
 import 'client.dart';
+import 'screens/audit_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/join_screen.dart';
 import 'screens/landing_screen.dart';
@@ -34,6 +35,11 @@ class QueueLockApp extends StatelessWidget {
             TicketScreen(token: state.pathParameters['token']!),
       ),
       GoRoute(path: '/staff', builder: (_, _) => const StaffScreen()),
+      GoRoute(
+        path: '/audit/:slug',
+        builder: (_, state) =>
+            AuditScreen(slug: state.pathParameters['slug']!),
+      ),
       GoRoute(
         path: '/staff/:queueId',
         builder: (_, state) => DashboardScreen(
