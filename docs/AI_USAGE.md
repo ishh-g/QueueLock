@@ -73,3 +73,10 @@ Disclosed per the hackathon rules (AI-tool use must be in the submission text).
   the call signal (already built in M4).
 - Repo moved `OneDrive\Desktop\QueueLock` → `C:\src\QueueLock`: sync
   locks kept killing builds. Fresh-clone run passed (see below).
+
+## UI refresh (Sep 29, 2026)
+
+- Same tool. Used for: greens palette theme (light + derived dark),
+  route transitions, ticket/dashboard/landing/join motion, status chips.
+- New dependency: `flutter_animate` (Flutter team, declarative motion;
+  transform/opacity only for low-end GPUs).

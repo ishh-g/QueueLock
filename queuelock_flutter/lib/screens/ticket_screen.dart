@@ -1,11 +1,15 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:queuelock_client/queuelock_client.dart';
 
 import '../call_alert.dart';
 import '../client.dart';
+import '../theme.dart';
+import '../widgets/status_chip.dart';
 
 /// Live customer ticket page at `/t/:token`. Renders the server-computed
 /// [TicketView] stream; reconnects resubscribe automatically.
@@ -131,29 +135,39 @@ class _TicketBody extends StatelessWidget {
             ),
           ),
         Text(view.queueName, style: theme.textTheme.titleLarge),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
         Center(
-          child: Text(
-            '${view.number}',
-            style: theme.textTheme.displayLarge?.copyWith(fontSize: 96),
+          child: StatusChip(
+            statusName: view.status.name,
+            label: _statusLabel(view),
           ),
         ),
-        Center(child: Text(_statusLabel(view))),
+        const SizedBox(height: 8),
+        Center(
+          // The number eases to its new value on every change.
+          child: AnimatedSwitcher(
+            duration: 350.ms,
+            switchInCurve: Curves.easeOutBack,
+            transitionBuilder: (child, animation) => ScaleTransition(
+              scale: animation,
+              child: FadeTransition(opacity: animation, child: child),
+            ),
+            child: Text(
+              '${view.number}',
+              key: ValueKey(view.number),
+              style: theme.textTheme.displayLarge?.copyWith(fontSize: 96),
+            ),
+          ),
+        ),
         const SizedBox(height: 16),
         if (view.status == TicketStatus.called && view.counterName != null)
           _CalledBanner(
+            key: const ValueKey('called'),
             counterName: view.counterName!,
             arriveInSec: view.arriveInSec,
           ),
         if (view.status == TicketStatus.waiting) ...[
-          Center(
-            child: Text(
-              view.position == 0
-                  ? 'You are next.'
-                  : '${view.position} ahead of you.',
-              style: theme.textTheme.titleMedium,
-            ),
-          ),
+          _PositionDots(position: view.position),
           const SizedBox(height: 8),
           Center(
             child: Text(
@@ -166,7 +180,16 @@ class _TicketBody extends StatelessWidget {
         if (view.status == TicketStatus.serving)
           const Center(child: Text('You are being served.')),
         if (view.status == TicketStatus.done)
-          const Center(child: Text('Done. Thank you!')),
+          Center(
+            child: Text(
+              'Done. Thank you!',
+              style: theme.textTheme.titleMedium,
+            ).animate().scale(
+              begin: const Offset(0.9, 0.9),
+              duration: 400.ms,
+              curve: Curves.easeOutBack,
+            ),
+          ),
         if (view.status == TicketStatus.skipped)
           const Center(child: Text('You missed your turn twice.')),
         if (view.status == TicketStatus.cancelled)
@@ -178,9 +201,6 @@ class _TicketBody extends StatelessWidget {
             view.status == TicketStatus.called)
           OutlinedButton(
             onPressed: leaving ? null : onLeave,
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size.fromHeight(52),
-            ),
             child: const Text('Leave queue'),
           ),
       ],
@@ -199,10 +219,62 @@ class _TicketBody extends StatelessWidget {
   }
 }
 
+/// Draining dots: filled dots are people ahead, capped at five.
+class _PositionDots extends StatelessWidget {
+  final int position;
+  const _PositionDots({required this.position});
+
+  @override
+  Widget build(BuildContext context) {
+    final filled = position.clamp(0, 5);
+    return Column(
+      children: [
+        AnimatedSwitcher(
+          duration: 300.ms,
+          transitionBuilder: (child, animation) =>
+              FadeTransition(opacity: animation, child: child),
+          child: Row(
+            key: ValueKey(position),
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              for (var i = 0; i < 5; i++)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 3),
+                  child: Icon(
+                    Icons.circle,
+                    size: 12,
+                    color: i < filled
+                        ? AppTheme.waiting
+                        : Theme.of(
+                            context,
+                          ).colorScheme.outlineVariant,
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          position == 0
+              ? 'You are next.'
+              : position == 1
+              ? '1 person ahead of you.'
+              : '$position people ahead of you.',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+      ],
+    );
+  }
+}
+
 class _CalledBanner extends StatefulWidget {
   final String counterName;
   final int? arriveInSec;
-  const _CalledBanner({required this.counterName, required this.arriveInSec});
+  const _CalledBanner({
+    super.key,
+    required this.counterName,
+    required this.arriveInSec,
+  });
 
   @override
   State<_CalledBanner> createState() => _CalledBannerState();
@@ -210,12 +282,14 @@ class _CalledBanner extends StatefulWidget {
 
 class _CalledBannerState extends State<_CalledBanner> {
   late final DateTime _shownAt;
+  late final int _totalSec;
   Timer? _timer;
 
   @override
   void initState() {
     super.initState();
     _shownAt = DateTime.now();
+    _totalSec = widget.arriveInSec ?? 60;
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
     });
@@ -227,40 +301,91 @@ class _CalledBannerState extends State<_CalledBanner> {
     super.dispose();
   }
 
+  int get _remaining {
+    if (widget.arriveInSec == null) return -1;
+    return widget.arriveInSec! - DateTime.now().difference(_shownAt).inSeconds;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final remaining = widget.arriveInSec == null
-        ? null
-        : widget.arriveInSec! -
-              DateTime.now().difference(_shownAt).inSeconds;
-    return Container(
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final bg = dark ? AppTheme.readyDark : AppTheme.ready;
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final remaining = _remaining;
+    final progress = remaining < 0
+        ? 0.0
+        : (remaining / math.max(_totalSec, 1)).clamp(0.0, 1.0);
+    final banner = Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
-      decoration: ShapeDecoration(
-        color: colors.primaryContainer,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(
+            color: AppTheme.rose,
+            blurRadius: 28,
+            spreadRadius: -8,
+          ),
+        ],
       ),
       child: Column(
         children: [
           Text(
             'Go to Counter ${widget.counterName}',
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(color: colors.onPrimaryContainer),
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: 120,
+            height: 120,
+            child: CustomPaint(
+              painter: _RingPainter(
+                progress: progress,
+                track: Colors.white.withValues(alpha: 0.3),
+                bar: Colors.white,
+              ),
+              child: Center(
+                child: Text(
+                  remaining < 0 ? 'now' : _format(remaining),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    fontFeatures: [FontFeature.tabularFigures()],
+                  ),
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 8),
           Text(
-            remaining == null
-                ? 'Please head over now.'
-                : remaining > 0
-                ? 'About ${_format(remaining)} left to arrive.'
-                : 'Please head to the counter now.',
-            style: TextStyle(color: colors.onPrimaryContainer),
+            remaining < 0
+                ? 'Please head to the counter now.'
+                : 'Time left to arrive.',
+            style: const TextStyle(color: Colors.white),
           ),
         ],
       ),
     );
+    if (reduceMotion) return banner;
+    // Spring in once on mount; then breathe gently while visible.
+    return banner
+        .animate()
+        .scale(
+          begin: const Offset(0.85, 0.85),
+          duration: 450.ms,
+          curve: Curves.easeOutBack,
+        )
+        .fadeIn(duration: 300.ms)
+        .animate(
+          onComplete: (controller) => controller.repeat(reverse: true),
+        )
+        .scaleXY(end: 1.015, duration: 1400.ms, curve: Curves.easeInOut);
   }
 
   String _format(int totalSec) {
@@ -268,6 +393,44 @@ class _CalledBannerState extends State<_CalledBanner> {
     final s = totalSec % 60;
     return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
   }
+}
+
+class _RingPainter extends CustomPainter {
+  final double progress;
+  final Color track;
+  final Color bar;
+  const _RingPainter({
+    required this.progress,
+    required this.track,
+    required this.bar,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final radius = (size.shortestSide - 12) / 2;
+    final trackPaint = Paint()
+      ..color = track
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 9
+      ..strokeCap = StrokeCap.round;
+    final barPaint = Paint()
+      ..color = bar
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 9
+      ..strokeCap = StrokeCap.round;
+    canvas.drawCircle(center, radius, trackPaint);
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -math.pi / 2,
+      math.pi * 2 * progress,
+      false,
+      barPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_RingPainter old) => old.progress != progress;
 }
 
 class _ReceiptPanel extends StatelessWidget {

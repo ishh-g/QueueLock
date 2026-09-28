@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:queuelock_client/queuelock_client.dart';
 
@@ -72,8 +73,20 @@ class _JoinScreenState extends State<JoinScreen> {
               }
               final info = snapshot.data!;
               final open = info.queue.status == QueueStatus.open;
-              return ListView(
+              return SingleChildScrollView(
                 padding: const EdgeInsets.all(24),
+                child: Column(
+                  children: [
+                    ...AnimateList(
+                interval: 90.ms,
+                effects: [
+                  FadeEffect(duration: 300.ms, curve: Curves.easeOutCubic),
+                  const SlideEffect(
+                    begin: Offset(0, 0.1),
+                    duration: Duration(milliseconds: 300),
+                    curve: Curves.easeOutCubic,
+                  ),
+                ],
                 children: [
                   Text(
                     info.queue.name,
@@ -100,9 +113,6 @@ class _JoinScreenState extends State<JoinScreen> {
                   const SizedBox(height: 12),
                   FilledButton(
                     onPressed: open && !_joining ? _join : null,
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size.fromHeight(52),
-                    ),
                     child: _joining
                         ? const SizedBox(
                             height: 20,
@@ -110,7 +120,9 @@ class _JoinScreenState extends State<JoinScreen> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Text('Join'),
-                  ),
+                  )
+                      .animate(target: _joining ? 1 : 0)
+                      .scaleXY(end: 0.97, duration: 120.ms),
                   if (_error != null) ...[
                     const SizedBox(height: 12),
                     Text(
@@ -118,14 +130,17 @@ class _JoinScreenState extends State<JoinScreen> {
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.error,
                       ),
-                    ),
+                    ).animate().shake(duration: 300.ms),
                   ],
                   const SizedBox(height: 12),
                   const Text(
                     'Data-minimised: only a nickname, nothing else.',
                   ),
                 ],
-              );
+              ),
+            ],
+          ),
+        );
             },
           ),
         ),

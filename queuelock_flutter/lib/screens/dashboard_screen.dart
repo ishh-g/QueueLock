@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:queuelock_client/queuelock_client.dart';
 
 import '../client.dart';
+import '../widgets/status_chip.dart';
 import 'sign_in_screen.dart';
 
 /// Counter dashboard at `/staff/:queueId`: pick a counter, call next,
@@ -190,9 +192,10 @@ class _Body extends StatelessWidget {
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
+          runSpacing: 8,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            Text('Status: ${snap.status.name}'),
+            StatusChip(statusName: snap.status.name, label: snap.status.name),
             for (final s in QueueStatus.values)
               ChoiceChip(
                 label: Text(s.name),
@@ -243,8 +246,14 @@ class _Body extends StatelessWidget {
         FilledButton(
           onPressed: busy ? null : onCallNext,
           style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56)),
-          child: const Text('Call next', style: TextStyle(fontSize: 20)),
-        ),
+          child: busy
+              ? const SizedBox(
+                  height: 22,
+                  width: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Call next', style: TextStyle(fontSize: 20)),
+        ).animate(target: busy ? 1 : 0).scaleXY(end: 0.98, duration: 120.ms),
         const Divider(height: 32),
         _TicketSection(
           title: 'Called',
@@ -342,11 +351,21 @@ class _TicketSection extends StatelessWidget {
         if (tickets.isEmpty) const Text('—'),
         for (final t in tickets)
           Card(
+            key: ValueKey('ticket-${t.id}'),
             child: ListTile(
-              title: Text('#${t.number} ${t.nickname ?? ''}'.trim()),
-              subtitle: Text(
-                t.counterName == null ? t.status.name : '${t.status.name} · ${t.counterName}',
+              leading: StatusChip(
+                statusName: t.status.name,
+                label: '#${t.number}',
               ),
+              title: () {
+                final nickname = (t.nickname ?? '').trim();
+                return Text(
+                  nickname.isEmpty ? 'Ticket ${t.number}' : nickname,
+                );
+              }(),
+              subtitle: t.counterName == null
+                  ? null
+                  : Text('Counter ${t.counterName}'),
               trailing: Wrap(
                 spacing: 4,
                 children: [
@@ -374,7 +393,7 @@ class _TicketSection extends StatelessWidget {
                 ],
               ),
             ),
-          ),
+          ).animate().fadeIn(duration: 250.ms, curve: Curves.easeOutCubic),
         const SizedBox(height: 12),
       ],
     );

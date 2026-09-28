@@ -10,6 +10,7 @@ import 'screens/join_screen.dart';
 import 'screens/landing_screen.dart';
 import 'screens/staff_screen.dart';
 import 'screens/ticket_screen.dart';
+import 'theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,32 +19,57 @@ void main() async {
   runApp(QueueLockApp());
 }
 
+/// Shared 250 ms fade+scale route transition.
+CustomTransitionPage<void> _page(Widget child) {
+  return CustomTransitionPage(
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final curved = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+      );
+      return FadeTransition(
+        opacity: curved,
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.98, end: 1).animate(curved),
+          child: child,
+        ),
+      );
+    },
+    child: child,
+  );
+}
+
 class QueueLockApp extends StatelessWidget {
   QueueLockApp({super.key});
 
   final GoRouter _router = GoRouter(
     routes: [
-      GoRoute(path: '/', builder: (_, _) => const LandingScreen()),
+      GoRoute(path: '/', pageBuilder: (_, _) => _page(const LandingScreen())),
       GoRoute(
         path: '/q/:slug',
-        builder: (_, state) =>
-            JoinScreen(slug: state.pathParameters['slug']!),
+        pageBuilder: (_, state) =>
+            _page(JoinScreen(slug: state.pathParameters['slug']!)),
       ),
       GoRoute(
         path: '/t/:token',
-        builder: (_, state) =>
-            TicketScreen(token: state.pathParameters['token']!),
+        pageBuilder: (_, state) =>
+            _page(TicketScreen(token: state.pathParameters['token']!)),
       ),
-      GoRoute(path: '/staff', builder: (_, _) => const StaffScreen()),
+      GoRoute(
+        path: '/staff',
+        pageBuilder: (_, _) => _page(const StaffScreen()),
+      ),
       GoRoute(
         path: '/audit/:slug',
-        builder: (_, state) =>
-            AuditScreen(slug: state.pathParameters['slug']!),
+        pageBuilder: (_, state) =>
+            _page(AuditScreen(slug: state.pathParameters['slug']!)),
       ),
       GoRoute(
         path: '/staff/:queueId',
-        builder: (_, state) => DashboardScreen(
-          queueId: int.tryParse(state.pathParameters['queueId'] ?? ''),
+        pageBuilder: (_, state) => _page(
+          DashboardScreen(
+            queueId: int.tryParse(state.pathParameters['queueId'] ?? ''),
+          ),
         ),
       ),
     ],
@@ -53,19 +79,12 @@ class QueueLockApp extends StatelessWidget {
     ),
   );
 
-  ThemeData _theme(Brightness brightness) => ThemeData(
-    colorScheme: ColorScheme.fromSeed(
-      seedColor: Colors.teal,
-      brightness: brightness,
-    ),
-  );
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
       title: 'QueueLock',
-      theme: _theme(Brightness.light),
-      darkTheme: _theme(Brightness.dark),
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
       themeMode: ThemeMode.system,
       routerConfig: _router,
     );
