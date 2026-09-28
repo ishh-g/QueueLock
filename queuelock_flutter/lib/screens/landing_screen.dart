@@ -23,14 +23,14 @@ class LandingScreen extends StatelessWidget {
               base: dark ? AppTheme.darkBackground : AppTheme.cream,
               blobs: dark
                   ? [
-                      AppTheme.pine.withValues(alpha: 0.55),
-                      AppTheme.moss.withValues(alpha: 0.30),
-                      AppTheme.rose.withValues(alpha: 0.16),
+                      AppTheme.maroon.withValues(alpha: 0.55),
+                      AppTheme.matcha.withValues(alpha: 0.28),
+                      AppTheme.rose.withValues(alpha: 0.18),
                     ]
                   : [
-                      AppTheme.pine.withValues(alpha: 0.22),
-                      AppTheme.moss.withValues(alpha: 0.32),
-                      AppTheme.rose.withValues(alpha: 0.20),
+                      AppTheme.maroon.withValues(alpha: 0.20),
+                      AppTheme.matcha.withValues(alpha: 0.38),
+                      AppTheme.rose.withValues(alpha: 0.22),
                     ],
             ),
           ),

@@ -1,52 +1,54 @@
 import 'package:flutter/material.dart';
 
-/// QueueLock palette: deep greens + beige, with rosy brown as the single
-/// warm accent. Calm clinical surfaces; green means go.
+/// QueueLock palette: cherry matcha — deep maroon + fresh matcha on warm
+/// cream. Maroon carries headers and actions; matcha carries highlights;
+/// rosy brown is the single warm accent.
 ///
-/// Rule: greens carry the interface; amber-green-red are reserved for
-/// queue statuses, always paired with an icon and a label.
+/// Rule: maroon and matcha carry the interface; amber-green-red are
+/// reserved for queue statuses, always paired with an icon and a label.
 abstract final class AppTheme {
-  // Brand greens.
-  static const pine = Color(0xFF105666); // headers, navigation
-  static const leaf = Color(0xFF0A3323); // primary actions (light)
-  static const moss = Color(0xFF839958); // secondary surfaces, fills
-  static const mossDeep = Color(0xFF5C7038); // moss text on light
-  static const mossLight = Color(0xFFA9BE7F); // moss text on dark
-  static const cream = Color(0xFFF7F4D5); // page background (light)
-  static const ink = Color(0xFF223129); // main text (light)
-  static const muted = Color(0xFF5A6B5E); // secondary text (light)
-  static const border = Color(0xFFDCE3D2);
+  // Brand.
+  static const maroon = Color(0xFF670626); // headers, actions (light)
+  static const maroonDeep = Color(0xFF4A0419);
+  static const matcha = Color(0xFFBAD797); // highlights, fills
+  static const matchaDeep = Color(0xFF5F7E33); // matcha text on light
+  static const matchaLight = Color(0xFFCFE3A8); // matcha text on dark
+  static const cream = Color(0xFFFAF3E7); // page background (light)
+  static const paper = Color(0xFFFFFDF8); // cards (light)
+  static const ink = Color(0xFF2E1B1E); // main text (light)
+  static const muted = Color(0xFF8A6F6B); // secondary text (light)
+  static const border = Color(0xFFEADFCB);
 
-  // Dark surfaces derived from the same hues.
-  static const darkBackground = Color(0xFF0B1A14);
-  static const darkSurface = Color(0xFF10241B);
-  static const darkCard = Color(0xFF143021);
-  static const darkText = Color(0xFFE9F2E9);
-  static const darkTextMuted = Color(0xFF9DB3A4);
-  static const darkBorder = Color(0xFF1F3A2C);
+  // Dark surfaces derived from the same family.
+  static const darkBackground = Color(0xFF150A0E);
+  static const darkSurface = Color(0xFF1F1016);
+  static const darkCard = Color(0xFF2A1420);
+  static const darkText = Color(0xFFF5E9E4);
+  static const darkTextMuted = Color(0xFFC4A5A0);
+  static const darkBorder = Color(0xFF3A2230);
 
-  // The one warm accent: rosy brown, used sparingly (called glow).
+  // The one warm accent: rosy brown, used sparingly (glow, QR edge).
   static const rose = Color(0xFFD3968C);
 
   // Aliases kept for call sites.
-  static const waiting = moss;
+  static const waiting = matcha;
 
   /// Status colors. Same hues both modes (dark values lifted for
   /// contrast). Never used without icon + label.
-  static const ready = Color(0xFF2E9D68);
-  static const readyDark = Color(0xFF3AB57E);
-  static const issue = Color(0xFFD9534F);
+  static const ready = Color(0xFF2E7D4F);
+  static const readyDark = Color(0xFF43B581);
+  static const issue = Color(0xFFC0392B);
   static const issueDark = Color(0xFFE57370);
 
   static ThemeData get light {
     const scheme = ColorScheme.light(
-      primary: pine,
+      primary: maroon,
       onPrimary: Colors.white,
-      secondary: leaf,
-      onSecondary: cream,
+      secondary: matchaDeep,
+      onSecondary: Colors.white,
       surface: cream,
       onSurface: ink,
-      surfaceContainerHighest: Colors.white,
+      surfaceContainerHighest: paper,
       onSurfaceVariant: muted,
       outlineVariant: border,
       error: issue,
@@ -54,12 +56,12 @@ abstract final class AppTheme {
     return ThemeData(
       colorScheme: scheme,
       appBarTheme: const AppBarTheme(
-        backgroundColor: pine,
+        backgroundColor: maroon,
         foregroundColor: Colors.white,
       ),
       scaffoldBackgroundColor: cream,
       cardTheme: CardThemeData(
-        color: Colors.white,
+        color: paper,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
           side: const BorderSide(color: border),
@@ -67,7 +69,7 @@ abstract final class AppTheme {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: leaf,
+          backgroundColor: maroon,
           foregroundColor: cream,
           minimumSize: const Size.fromHeight(52),
           textStyle: const TextStyle(fontSize: 16),
@@ -81,17 +83,17 @@ abstract final class AppTheme {
       inputDecorationTheme: const InputDecorationTheme(
         border: OutlineInputBorder(),
         filled: true,
-        fillColor: Colors.white,
+        fillColor: paper,
       ),
     );
   }
 
   static ThemeData get dark {
     const scheme = ColorScheme.dark(
-      primary: mossLight,
-      onPrimary: leaf,
-      secondary: mossLight,
-      onSecondary: leaf,
+      primary: matchaLight,
+      onPrimary: maroonDeep,
+      secondary: matchaLight,
+      onSecondary: maroonDeep,
       surface: darkBackground,
       onSurface: darkText,
       surfaceContainerHighest: darkCard,
@@ -102,7 +104,7 @@ abstract final class AppTheme {
     return ThemeData(
       colorScheme: scheme,
       appBarTheme: const AppBarTheme(
-        backgroundColor: pine,
+        backgroundColor: maroon,
         foregroundColor: Colors.white,
       ),
       scaffoldBackgroundColor: darkBackground,
@@ -115,8 +117,8 @@ abstract final class AppTheme {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: cream,
-          foregroundColor: leaf,
+          backgroundColor: matcha,
+          foregroundColor: maroonDeep,
           minimumSize: const Size.fromHeight(52),
           textStyle: const TextStyle(fontSize: 16),
         ),
@@ -136,7 +138,7 @@ abstract final class AppTheme {
   static Color statusColor(String statusName, Brightness brightness) {
     final dark = brightness == Brightness.dark;
     return switch (statusName) {
-      'waiting' => dark ? mossLight : mossDeep,
+      'waiting' => dark ? matchaLight : matchaDeep,
       'called' || 'serving' => dark ? readyDark : ready,
       'skipped' || 'cancelled' => dark ? issueDark : issue,
       _ => dark ? darkTextMuted : muted,

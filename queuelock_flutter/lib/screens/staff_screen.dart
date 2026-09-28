@@ -6,6 +6,7 @@ import 'package:serverpod_auth_idp_flutter/serverpod_auth_idp_flutter.dart';
 
 import '../client.dart';
 import '../theme.dart';
+import '../widgets/mesh_gradient.dart';
 import '../widgets/status_chip.dart';
 import 'sign_in_screen.dart';
 
@@ -79,103 +80,112 @@ class _QueuesState extends State<_Queues> {
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: dark
-              ? [AppTheme.pine, AppTheme.darkBackground]
-              : [const Color(0xFFDCE8D2), AppTheme.cream],
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: MeshGradient(
+            base: dark ? AppTheme.darkBackground : AppTheme.cream,
+            blobs: dark
+                ? [
+                    AppTheme.maroon.withValues(alpha: 0.5),
+                    AppTheme.matcha.withValues(alpha: 0.22),
+                    AppTheme.rose.withValues(alpha: 0.14),
+                  ]
+                : [
+                    AppTheme.maroon.withValues(alpha: 0.16),
+                    AppTheme.matcha.withValues(alpha: 0.35),
+                    AppTheme.rose.withValues(alpha: 0.2),
+                  ],
+          ),
         ),
-      ),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 600),
-          child: RefreshIndicator(
-            onRefresh: _refresh,
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(20),
-              child: FutureBuilder<List<Queue>>(
-                future: _queues,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState ==
-                          ConnectionState.waiting &&
-                      !snapshot.hasData) {
-                    return const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 64),
-                      child: Center(child: CircularProgressIndicator()),
-                    );
-                  }
-                  if (snapshot.hasError) {
+        Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600),
+            child: RefreshIndicator(
+              onRefresh: _refresh,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(20),
+                child: FutureBuilder<List<Queue>>(
+                  future: _queues,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState ==
+                            ConnectionState.waiting &&
+                        !snapshot.hasData) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 64),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    if (snapshot.hasError) {
+                      return Column(
+                        children: [
+                          Text(
+                            'Could not load queues: ${snapshot.error}',
+                          ),
+                          const SizedBox(height: 12),
+                          OutlinedButton(
+                            onPressed: () => setState(
+                              () => _queues = client.admin.myQueues(),
+                            ),
+                            child: const Text('Retry'),
+                          ),
+                        ],
+                      );
+                    }
+                    final queues = snapshot.data!;
                     return Column(
                       children: [
-                        Text(
-                          'Could not load queues: ${snapshot.error}',
-                        ),
-                        const SizedBox(height: 12),
-                        OutlinedButton(
-                          onPressed: () => setState(
-                            () => _queues = client.admin.myQueues(),
-                          ),
-                          child: const Text('Retry'),
+                        ...AnimateList(
+                          interval: 90.ms,
+                          effects: [
+                            FadeEffect(
+                              duration: 320.ms,
+                              curve: Curves.easeOutCubic,
+                            ),
+                            const SlideEffect(
+                              begin: Offset(0, 0.1),
+                              duration: Duration(milliseconds: 320),
+                              curve: Curves.easeOutCubic,
+                            ),
+                          ],
+                          children: [
+                            _HeaderRow(
+                              count: queues.length,
+                              onSignOut: () async {
+                                await client.auth.signOutDevice();
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                            if (queues.isEmpty)
+                              const _EmptyQueues()
+                            else
+                              for (final q in queues)
+                                _QueueCard(
+                                  key: ValueKey('queue-${q.id}'),
+                                  queue: q,
+                                  onOpen: () =>
+                                      context.go('/staff/${q.id}'),
+                                ),
+                            const SizedBox(height: 20),
+                            _CreateCard(
+                              name: _name,
+                              timeout: _timeout,
+                              creating: _creating,
+                              error: _error,
+                              onCreate: _create,
+                            ),
+                          ],
                         ),
                       ],
                     );
-                  }
-                  final queues = snapshot.data!;
-                  return Column(
-                    children: [
-                      ...AnimateList(
-                        interval: 90.ms,
-                        effects: [
-                          FadeEffect(
-                            duration: 320.ms,
-                            curve: Curves.easeOutCubic,
-                          ),
-                          const SlideEffect(
-                            begin: Offset(0, 0.1),
-                            duration: Duration(milliseconds: 320),
-                            curve: Curves.easeOutCubic,
-                          ),
-                        ],
-                        children: [
-                          _HeaderRow(
-                            count: queues.length,
-                            onSignOut: () async {
-                              await client.auth.signOutDevice();
-                            },
-                          ),
-                          const SizedBox(height: 12),
-                          if (queues.isEmpty)
-                            const _EmptyQueues()
-                          else
-                            for (final q in queues)
-                              _QueueCard(
-                                key: ValueKey('queue-${q.id}'),
-                                queue: q,
-                                onOpen: () =>
-                                    context.go('/staff/${q.id}'),
-                              ),
-                          const SizedBox(height: 20),
-                          _CreateCard(
-                            name: _name,
-                            timeout: _timeout,
-                            creating: _creating,
-                            error: _error,
-                            onCreate: _create,
-                          ),
-                        ],
-                      ),
-                    ],
-                  );
-                },
+                  },
+                ),
               ),
             ),
           ),
         ),
-      ),
+      ],
     );
   }
 }
@@ -193,7 +203,7 @@ class _HeaderRow extends StatelessWidget {
           width: 46,
           height: 46,
           decoration: const ShapeDecoration(
-            color: AppTheme.pine,
+            color: AppTheme.maroon,
             shape: StadiumBorder(),
           ),
           child: const Icon(

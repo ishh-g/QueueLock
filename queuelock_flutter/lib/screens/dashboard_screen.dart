@@ -185,8 +185,8 @@ class _Body extends StatelessWidget {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: dark
-              ? [AppTheme.pine, AppTheme.darkBackground]
-              : [const Color(0xFFDCE8D2), AppTheme.cream],
+              ? [AppTheme.maroon, AppTheme.darkBackground]
+              : [const Color(0xFFF3E4C8), AppTheme.cream],
         ),
       ),
       child: ListView(
@@ -203,7 +203,7 @@ class _Body extends StatelessWidget {
                 width: 46,
                 height: 46,
                 decoration: const ShapeDecoration(
-                  color: AppTheme.pine,
+                  color: AppTheme.maroon,
                   shape: StadiumBorder(),
                 ),
                 child: const Icon(
@@ -370,7 +370,7 @@ class _JoinQr extends StatelessWidget {
     final url = '${Uri.base.origin}/q/$slug';
     // Cream panel in both modes: pops on the page and scans reliably.
     const panel = AppTheme.cream;
-    const onPanel = AppTheme.leaf;
+    const onPanel = AppTheme.maroonDeep;
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: AppTheme.rose, width: 2),
@@ -471,13 +471,13 @@ class _TicketSection extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
               decoration: ShapeDecoration(
-                color: (tint ?? AppTheme.moss).withValues(alpha: 0.18),
+                color: (tint ?? AppTheme.matcha).withValues(alpha: 0.18),
                 shape: const StadiumBorder(),
               ),
               child: Text(
                 '${count ?? tickets.length}',
                 style: TextStyle(
-                  color: tint ?? AppTheme.mossDeep,
+                  color: tint ?? AppTheme.matchaDeep,
                   fontWeight: FontWeight.bold,
                   fontSize: 13,
                 ),
@@ -542,3 +542,4 @@ class _TicketSection extends StatelessWidget {
     );
   }
 }
+
