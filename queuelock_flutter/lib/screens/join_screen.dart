@@ -117,10 +117,10 @@ class _JoinScreenState extends State<JoinScreen> {
                       borderRadius: BorderRadius.circular(28),
                       boxShadow: [
                         BoxShadow(
-                          color: AppTheme.rose.withValues(alpha: 0.4),
-                          blurRadius: 18,
-                          spreadRadius: -6,
-                          offset: const Offset(0, 5),
+                          color: AppTheme.rose.withValues(alpha: 0.55),
+                          blurRadius: 24,
+                          spreadRadius: 2,
+                          offset: const Offset(0, 6),
                         ),
                       ],
                     ),

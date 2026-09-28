@@ -299,10 +299,10 @@ class _Body extends StatelessWidget {
                 ? null
                 : [
                     BoxShadow(
-                      color: AppTheme.rose.withValues(alpha: 0.4),
-                      blurRadius: 18,
-                      spreadRadius: -6,
-                      offset: const Offset(0, 5),
+                      color: AppTheme.rose.withValues(alpha: 0.55),
+                      blurRadius: 24,
+                      spreadRadius: 2,
+                      offset: const Offset(0, 6),
                     ),
                   ],
           ),
@@ -373,8 +373,16 @@ class _JoinQr extends StatelessWidget {
     const onPanel = AppTheme.leaf;
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(color: AppTheme.rose, width: 1.5),
+        border: Border.all(color: AppTheme.rose, width: 2),
         borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.rose.withValues(alpha: 0.35),
+            blurRadius: 24,
+            spreadRadius: 1,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Card(
         margin: EdgeInsets.zero,
