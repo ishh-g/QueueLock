@@ -41,8 +41,10 @@ class LedgerService {
     return sha256.convert(utf8.encode(input)).toString();
   }
 
-  /// Appends one entry and advances the queue head. Returns the entry.
-  static Future<LedgerEntry> append(
+  /// Appends one entry and advances the queue head. Returns the entry
+  /// together with the queue row carrying the new head, so chained
+  /// appends in the same transaction never reuse a stale `headSeq`.
+  static Future<({LedgerEntry entry, Queue queue})> append(
     Session session,
     Transaction transaction,
     Queue queue, {
@@ -81,13 +83,13 @@ class LedgerService {
       transaction: transaction,
     );
 
-    await Queue.db.updateRow(
+    final updatedQueue = await Queue.db.updateRow(
       session,
       queue.copyWith(headSeq: seq, headHash: hash),
       transaction: transaction,
     );
 
-    return entry;
+    return (entry: entry, queue: updatedQueue);
   }
 
   /// Recomputes the whole chain for [queueId]. Returns `(ok, firstBadSeq)`.

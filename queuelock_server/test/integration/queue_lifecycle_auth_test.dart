@@ -129,6 +129,104 @@ void main() {
         );
       });
 
+      test(
+        'when completing with callNext then the same counter calls the next ticket',
+        () async {
+          final queue = await endpoints.admin.createQueue(
+            owner,
+            'Chained Test',
+            callTimeoutSec: 180,
+          );
+          final counter = await endpoints.admin.addCounter(
+            owner,
+            queue.id!,
+            'A',
+          );
+          final first = await endpoints.queue.join(
+            sessionBuilder,
+            queue.slug,
+            'Dev',
+          );
+          final second = await endpoints.queue.join(
+            sessionBuilder,
+            queue.slug,
+            'Esha',
+          );
+
+          final called = (await endpoints.counter.callNext(
+            owner,
+            counter.id!,
+          ))!;
+          expect(called.number, first.number);
+          await endpoints.counter.startServing(owner, called.id!);
+
+          final next = await endpoints.counter.complete(
+            owner,
+            called.id!,
+            callNext: true,
+          );
+          expect(next, isNotNull);
+          expect(next!.number, second.number);
+          expect(next.status, TicketStatus.called);
+          expect(next.counterId, counter.id!);
+
+          final info = await endpoints.queue.info(sessionBuilder, queue.slug);
+          expect(info.waitingCount, 0);
+        },
+      );
+
+      test('when serving then skip takes the ticket out of the flow', () async {
+        final queue = await endpoints.admin.createQueue(
+          owner,
+          'Skip Serving Test',
+          callTimeoutSec: 180,
+        );
+        final counter = await endpoints.admin.addCounter(
+          owner,
+          queue.id!,
+          'A',
+        );
+        await endpoints.queue.join(sessionBuilder, queue.slug, 'Farhan');
+        final called = (await endpoints.counter.callNext(
+          owner,
+          counter.id!,
+        ))!;
+        await endpoints.counter.startServing(owner, called.id!);
+        await endpoints.counter.skip(owner, called.id!);
+        await expectLater(
+          endpoints.counter.startServing(owner, called.id!),
+          throwsA(isA<QueueError>()),
+        );
+      });
+
+      test('when called then the customer can still leave', () async {
+        final queue = await endpoints.admin.createQueue(
+          owner,
+          'Leave Called Test',
+          callTimeoutSec: 180,
+        );
+        final counter = await endpoints.admin.addCounter(
+          owner,
+          queue.id!,
+          'A',
+        );
+        final receipt = await endpoints.queue.join(
+          sessionBuilder,
+          queue.slug,
+          'Gita',
+        );
+        final called = (await endpoints.counter.callNext(
+          owner,
+          counter.id!,
+        ))!;
+        expect(called.number, receipt.number);
+        await endpoints.queue.leave(sessionBuilder, receipt.token);
+        await expectLater(
+          endpoints.counter.startServing(owner, called.id!),
+          throwsA(isA<QueueError>()),
+        );
+      });
+
       test('when the queue is closed then join is rejected', () async {
         final queue = await endpoints.admin.createQueue(
           owner,

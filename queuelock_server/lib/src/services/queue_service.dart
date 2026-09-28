@@ -124,7 +124,7 @@ class QueueService {
           if (existing != null) {
             throw QueueError(message: 'Slug taken, retry.');
           }
-          var queue = await Queue.db.insertRow(
+          final queue = await Queue.db.insertRow(
             session,
             Queue(
               slug: slug,
@@ -135,19 +135,14 @@ class QueueService {
             ),
             transaction: tx,
           );
-          await LedgerService.append(
+          final appended = await LedgerService.append(
             session,
             tx,
             queue,
             type: LedgerType.queueOpened,
             detail: 'created',
           );
-          queue = (await Queue.db.findById(
-            session,
-            queue.id!,
-            transaction: tx,
-          ))!;
-          return queue;
+          return appended.queue;
         });
       } on QueueError catch (e) {
         if (e.message != 'Slug taken, retry.') rethrow;
@@ -207,18 +202,14 @@ class QueueService {
           type = LedgerType.queueOpened;
           detail = 'reopened from ${queue.status.name}';
       }
-      await LedgerService.append(
+      final appended = await LedgerService.append(
         session,
         tx,
         updated,
         type: type,
         detail: detail,
       );
-      return (await Queue.db.findById(
-        session,
-        queue.id!,
-        transaction: tx,
-      ))!;
+      return appended.queue;
     });
   }
 
@@ -257,28 +248,23 @@ class QueueService {
         ),
         transaction: tx,
       );
-      await Queue.db.updateRow(
+      final numbered = await Queue.db.updateRow(
         session,
         queue.copyWith(lastNumber: number),
         transaction: tx,
       );
-      final locked = (await Queue.db.findById(
-        session,
-        queue.id!,
-        transaction: tx,
-      ))!;
-      final entry = await LedgerService.append(
+      final appended = await LedgerService.append(
         session,
         tx,
-        locked,
+        numbered,
         type: LedgerType.joined,
         ticketNumber: number,
       );
       return JoinReceipt(
         number: number,
         token: token,
-        joinSeq: entry.seq,
-        joinHash: entry.hash,
+        joinSeq: appended.entry.seq,
+        joinHash: appended.entry.hash,
       );
     });
   }
@@ -416,7 +402,7 @@ class QueueService {
         ),
         transaction: tx,
       );
-      await LedgerService.append(
+      final appended = await LedgerService.append(
         session,
         tx,
         queue,
@@ -425,7 +411,12 @@ class QueueService {
         counterId: updated.counterId,
       );
       if (callNext && updated.counterId != null) {
-        return _callNextLocked(session, tx, queue, updated.counterId!);
+        return _callNextLocked(
+          session,
+          tx,
+          appended.queue,
+          updated.counterId!,
+        );
       }
       return null;
     });

@@ -24,3 +24,7 @@ Disclosed per the hackathon rules (AI-tool use must be in the submission text).
   semantics, hermetic on CI. Documented in the test file header.
 - New dependency: `crypto` (spec section 7 mandates it for the ledger
   hash).
+- M1 follow-up: new tests for `complete(callNext: true)`, `skip` from
+  `serving`, `leave` from `called` caught a stale-head bug (chained ledger
+  appends reused the pre-append queue row, duplicating `seq`); fixed by
+  having `LedgerService.append` return the fresh head row.
