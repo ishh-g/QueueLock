@@ -1,0 +1,7 @@
+### A service counter belonging to a queue.
+class: Counter
+table: counter
+fields:
+  queueId: int, relation(parent=queue)
+  name: String
+  active: bool, default=true

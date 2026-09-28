@@ -1,0 +1,6 @@
+### Public queue snapshot: queue row plus live counters.
+class: QueueInfo
+fields:
+  queue: Queue
+  waitingCount: int
+  counters: List<Counter>

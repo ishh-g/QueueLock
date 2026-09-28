@@ -1,0 +1,6 @@
+### Result of recomputing a queue's ledger chain.
+class: VerifyResult
+fields:
+  ok: bool
+  entryCount: int
+  firstBadSeq: int?

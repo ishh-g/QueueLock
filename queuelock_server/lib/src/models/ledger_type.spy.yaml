@@ -1,0 +1,13 @@
+### Tamper-evident ledger event types.
+enum: LedgerType
+values:
+  - queueOpened
+  - queuePaused
+  - queueClosed
+  - joined
+  - called
+  - servingStarted
+  - completed
+  - reentered
+  - skipped
+  - cancelled

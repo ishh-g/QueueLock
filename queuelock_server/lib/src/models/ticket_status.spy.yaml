@@ -1,0 +1,9 @@
+### Ticket lifecycle status.
+enum: TicketStatus
+values:
+  - waiting
+  - called
+  - serving
+  - done
+  - skipped
+  - cancelled

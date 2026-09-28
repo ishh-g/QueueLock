@@ -1,0 +1,13 @@
+### One entry of a queue's tamper-evident ledger. Never stores nicknames.
+class: LedgerEntry
+table: ledger_entry
+fields:
+  queueId: int, relation(parent=queue)
+  seq: int, unique(per=queueId)
+  type: LedgerType
+  ticketNumber: int?
+  counterId: int?
+  detail: String?
+  tsMs: int
+  prevHash: String
+  hash: String

@@ -1,0 +1,20 @@
+### A customer's place in a queue. Never expose tokenHash to clients.
+class: Ticket
+table: ticket
+fields:
+  queueId: int, relation(parent=queue)
+  number: int, unique(per=queueId)
+  nickname: String?
+  tokenHash: String
+  status: TicketStatus
+  orderKey: double
+  callId: int, default=0
+  calledAt: DateTime?
+  counterId: int?
+  servingAt: DateTime?
+  doneAt: DateTime?
+  reentries: int, default=0
+  joinedAt: DateTime, default=now
+indexes:
+  ticket_queue_status_order_idx:
+    fields: queueId, status, orderKey

@@ -1,0 +1,4 @@
+### Domain error sent back to clients (never carries secrets).
+exception: QueueError
+fields:
+  message: String

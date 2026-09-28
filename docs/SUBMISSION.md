@@ -11,10 +11,16 @@ with just a nickname, see a live position and a learned wait estimate; staff
 call customers from several counters without double-calling; a public
 tamper-evident ledger lets anyone audit the run.
 
-## Features (M0: skeleton only)
+## Features (M1: core domain done)
 
-- `greeting.hello` example endpoint reachable from the Flutter Web app.
-- Nothing of the QueueLock domain is built yet (starts in M1).
+- Queue/Counter/Ticket/LedgerEntry/ServiceSample models + migration.
+- `join` (receipt with one-time token + ledger seq/hash), `callNext`
+  (race-free across counters), `startServing`, `complete` (optional chained
+  `callNext`), `skip`, `leave`, queue `info`, ledger page, `verify`,
+  `checkReceipt`. Owner-only staff endpoints; ticket hashes never leave
+  the server.
+- Proven: 50 concurrent joins gap-free; 2×20 concurrent calls exactly
+  once; chain verifies, tamper located at exact seq; non-owner rejected.
 
 ## How Serverpod is used (M0)
 
