@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:queuelock_client/queuelock_client.dart';
 
+import '../call_alert.dart';
 import '../client.dart';
 
 /// Live customer ticket page at `/t/:token`. Renders the server-computed
@@ -19,6 +20,7 @@ class TicketScreen extends StatefulWidget {
 class _TicketScreenState extends State<TicketScreen> {
   late final Stream<TicketView> _stream;
   bool _leaving = false;
+  TicketStatus? _lastStatus;
 
   @override
   void initState() {
@@ -76,6 +78,11 @@ class _TicketScreenState extends State<TicketScreen> {
               final view = snapshot.data!;
               final reconnecting =
                   snapshot.connectionState == ConnectionState.waiting;
+              if (view.status == TicketStatus.called &&
+                  _lastStatus != TicketStatus.called) {
+                alertOnCalled();
+              }
+              _lastStatus = view.status;
               return _TicketBody(
                 view: view,
                 reconnecting: reconnecting,

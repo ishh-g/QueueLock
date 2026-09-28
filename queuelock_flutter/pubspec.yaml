@@ -33,10 +33,12 @@ dependencies:
     sdk: flutter
   go_router: ^18.0.1
   google_fonts: ^8.1.0
+  qr_flutter: ^4.1.0
   queuelock_client:
     path: ../queuelock_client
   serverpod_auth_idp_flutter: 4.0.3
   serverpod_flutter: 4.0.3
+  web: ^1.1.1
 
 dev_dependencies:
   # Used for agents to drive the app through the Dart MCP

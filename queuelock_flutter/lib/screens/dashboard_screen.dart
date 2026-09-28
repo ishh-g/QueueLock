@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:queuelock_client/queuelock_client.dart';
 
 import '../client.dart';
@@ -185,6 +186,8 @@ class _Body extends StatelessWidget {
         Text(snap.queueName, style: theme.textTheme.headlineSmall),
         Text('Join at /q/${snap.slug}'),
         const SizedBox(height: 8),
+        _JoinQr(slug: snap.slug),
+        const SizedBox(height: 8),
         Wrap(
           spacing: 8,
           crossAxisAlignment: WrapCrossAlignment.center,
@@ -271,6 +274,42 @@ class _Body extends StatelessWidget {
           onSkip: onSkip,
         ),
       ],
+    );
+  }
+}
+
+/// QR code of the public join link. Print it or show it at the venue:
+/// customers scan it with any phone camera, no app install.
+class _JoinQr extends StatelessWidget {
+  final String slug;
+  const _JoinQr({required this.slug});
+
+  @override
+  Widget build(BuildContext context) {
+    final url = '${Uri.base.origin}/q/$slug';
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            QrImageView(data: url, size: 140),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Customer join link',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 4),
+                  SelectableText(url),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
