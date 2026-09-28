@@ -37,6 +37,20 @@ tamper-evident ledger lets anyone audit the run.
 - Proven: stream tests (subscribe → mutate → fresh view, no polling);
   `flutter build web` succeeds.
 
+## Features (M3: timeouts + estimator done)
+
+- Missed-call grace: first miss returns the ticket to waiting behind the
+  next three (orderKey midpoint rule), second miss skips it. Timeout
+  handler is idempotent (status + callId match required).
+- `CallTimeout` future call armed after every commit; recurring `Sweeper`
+  (60 s, single identifier-guarded chain) recovers missed timeouts and
+  purges nicknames older than 24 h.
+- Estimator: per-service samples, EWMA average (prior 300 s), live
+  `etaSeconds` in ticket views ("about N min, based on M recent
+  services", honest fallback with zero samples).
+- Proven: tests 4 (schedule row + sweeper re-entry at index 3 + skip +
+  idempotent re-runs), 5 (grace ordering unit), 6 (estimator unit).
+
 ## How Serverpod is used (M0)
 
 - `serverpod create` scaffold: `queuelock_server`, generated

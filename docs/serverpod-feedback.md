@@ -30,3 +30,14 @@ hackathon's feedback prize.
   `ERROR: Failed to run serverpod. You need to have dart installed and in
   your $PATH` — on Windows the variable is `%PATH%`/`$env:Path`, and the
   message does not say which Dart (the Flutter-bundled one is fine).
+
+## 4. `withServerpod` test servers never execute scheduled future calls
+
+- What: a `callWithDelay` scheduled inside an endpoint under test is
+  written to `serverpod_future_call` (verified by reading the table) but
+  never fires, no matter how long the test waits. There is no documented
+  way to pump the future-call manager in tests.
+- Impact: timeout behavior can only be tested by invoking the handler
+  (or sweeper body) directly with genuinely-expired rows — the same
+  production code path, but the manager's clock firing is untested.
+- Environment: Serverpod 4.0.3, `serverpod_test`, embedded PostgreSQL.

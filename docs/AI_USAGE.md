@@ -36,3 +36,16 @@ Disclosed per the hackathon rules (AI-tool use must be in the submission text).
   endpoints, stream tests, the go_router Flutter app (5 screens).
 - New dependencies: `go_router`, `flutter_web_plugins` (both spec
   section 4/13: path-URL routing for `/q/:slug` and `/t/:token`).
+
+## M3 (Sep 28, 2026)
+
+- Same tool. Used for: `Estimator`, grace rule, `applyCallTimeout`,
+  `CallTimeout`/`Sweeper` future calls, sweeper + retention, `complete`
+  sample recording, live ETA, tests 4–6.
+- Test deviation (spec section 0): test 4 asks for `callTimeoutSec = 1`
+  but section 6 sets a 10 s minimum, so tests use 10 s with genuinely
+  expired rows (backdated `calledAt`) through the sweeper and handler —
+  the same code the scheduled call runs. Scheduling itself is asserted
+  via the `serverpod_future_call` row. Finding: the `withServerpod`
+  test server does not execute future calls, so a real wall-clock
+  expiry cannot be tested there (logged in `serverpod-feedback.md`).
