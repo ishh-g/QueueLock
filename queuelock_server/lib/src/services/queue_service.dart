@@ -165,14 +165,20 @@ class QueueService {
     if (trimmed.isEmpty || trimmed.length > 40) {
       throw QueueError(message: 'Counter name must be 1-40 characters.');
     }
-    return withQueueLock(session, queueId, (session, tx, queue) async {
-      requireOwner(session, queue);
-      return Counter.db.insertRow(
-        session,
-        Counter(queueId: queue.id!, name: trimmed),
-        transaction: tx,
-      );
-    });
+    final counter = await withQueueLock(
+      session,
+      queueId,
+      (session, tx, queue) async {
+        requireOwner(session, queue);
+        return Counter.db.insertRow(
+          session,
+          Counter(queueId: queue.id!, name: trimmed),
+          transaction: tx,
+        );
+      },
+    );
+    await notifyChanged(session, counter.queueId);
+    return counter;
   }
 
   /// Opens, pauses or closes a queue, with a ledger entry.
@@ -180,8 +186,12 @@ class QueueService {
     Session session,
     int queueId,
     QueueStatus status,
-  ) {
-    return withQueueLock(session, queueId, (session, tx, queue) async {
+  ) async {
+    final result = await withQueueLock(session, queueId, (
+      session,
+      tx,
+      queue,
+    ) async {
       requireOwner(session, queue);
       if (queue.status == status) return queue;
       final updated = await Queue.db.updateRow(
@@ -211,6 +221,8 @@ class QueueService {
       );
       return appended.queue;
     });
+    await notifyChanged(session, result.id!);
+    return result;
   }
 
   /// Joins the open queue with [slug]. Returns the receipt; the token inside
@@ -303,6 +315,7 @@ class QueueService {
         ticketNumber: current.number,
       );
     });
+    await notifyChanged(session, ticket.queueId);
   }
 
   /// Calls the longest-waiting ticket to [counterId]. Returns the called
@@ -508,6 +521,153 @@ class QueueService {
     return entry != null && entry.hash == hash;
   }
 
+  // -- realtime views -----------------------------------------------------
+
+  /// Channel carrying "queue changed" pings for one queue. Messages carry
+  /// no state; every open stream recomputes its own view from the database.
+  static String channelFor(int queueId) => 'queue_$queueId';
+
+  /// Publishes a change ping. Call only after the transaction commits,
+  /// never inside it.
+  static Future<void> notifyChanged(Session session, int queueId) async {
+    await session.messages.postMessage(
+      channelFor(queueId),
+      QueueChanged(queueId: queueId),
+    );
+  }
+
+  /// Queues owned by the signed-in user, oldest first.
+  static Future<List<Queue>> myQueues(Session session) async {
+    final caller = session.authenticated?.authUserId;
+    if (caller == null) {
+      throw QueueError(message: 'Sign in required.');
+    }
+    return Queue.db.find(
+      session,
+      where: (t) => t.ownerId.equals(caller),
+      orderBy: (t) => t.id,
+    );
+  }
+
+  /// Queue id behind [token]. Throws when the token is unknown.
+  static Future<int> queueIdForToken(Session session, String token) async {
+    final ticket = await Ticket.db.findFirstRow(
+      session,
+      where: (t) => t.tokenHash.equals(TicketTokens.tokenHashFor(token)),
+    );
+    if (ticket == null) throw QueueError(message: 'Ticket not found.');
+    return ticket.queueId;
+  }
+
+  /// Live customer-facing view of the ticket behind [token].
+  /// `etaSeconds` stays null until the M3 estimator lands.
+  static Future<TicketView> ticketView(Session session, String token) async {
+    final ticket = await Ticket.db.findFirstRow(
+      session,
+      where: (t) => t.tokenHash.equals(TicketTokens.tokenHashFor(token)),
+    );
+    if (ticket == null) throw QueueError(message: 'Ticket not found.');
+    final queue = await Queue.db.findById(session, ticket.queueId);
+    if (queue == null) throw QueueError(message: 'Queue not found.');
+
+    var position = 0;
+    if (ticket.status == TicketStatus.waiting) {
+      position = await Ticket.db.count(
+        session,
+        where: (t) =>
+            t.queueId.equals(queue.id!) &
+            t.status.equals(TicketStatus.waiting) &
+            (t.orderKey < ticket.orderKey),
+      );
+    }
+
+    String? counterName;
+    if (ticket.counterId != null) {
+      final counter = await Counter.db.findById(session, ticket.counterId!);
+      counterName = counter?.name;
+    }
+
+    int? arriveInSec;
+    if (ticket.status == TicketStatus.called && ticket.calledAt != null) {
+      final elapsed = DateTime.now().toUtc().difference(ticket.calledAt!);
+      arriveInSec = (queue.callTimeoutSec - elapsed.inSeconds).clamp(
+        0,
+        queue.callTimeoutSec,
+      );
+    }
+
+    final receipt = await LedgerEntry.db.findFirstRow(
+      session,
+      where: (t) =>
+          t.queueId.equals(queue.id!) &
+          t.ticketNumber.equals(ticket.number) &
+          t.type.equals(LedgerType.joined),
+      orderBy: (t) => t.seq,
+    );
+
+    return TicketView(
+      queueId: queue.id!,
+      queueSlug: queue.slug,
+      queueName: queue.name,
+      number: ticket.number,
+      nickname: ticket.nickname,
+      status: ticket.status,
+      position: position,
+      counterName: counterName,
+      arriveInSec: arriveInSec,
+      receiptSeq: receipt?.seq,
+      receiptHash: receipt?.hash,
+    );
+  }
+
+  /// Live staff-facing snapshot of [queueId].
+  static Future<QueueSnapshot> queueSnapshot(
+    Session session,
+    int queueId,
+  ) async {
+    final queue = await Queue.db.findById(session, queueId);
+    if (queue == null) throw QueueError(message: 'Queue not found.');
+    final counters = await Counter.db.find(
+      session,
+      where: (t) => t.queueId.equals(queueId),
+      orderBy: (t) => t.id,
+    );
+    final names = {for (final c in counters) c.id!: c.name};
+
+    Future<List<TicketPublic>> byStatus(TicketStatus status) async {
+      final tickets = await Ticket.db.find(
+        session,
+        where: (t) => t.queueId.equals(queueId) & t.status.equals(status),
+        orderBy: (t) => t.orderKey,
+      );
+      return [
+        for (final t in tickets)
+          TicketPublic(
+            id: t.id!,
+            number: t.number,
+            nickname: t.nickname,
+            status: t.status,
+            counterName: t.counterId == null ? null : names[t.counterId],
+            calledAt: t.calledAt,
+            servingAt: t.servingAt,
+          ),
+      ];
+    }
+
+    return QueueSnapshot(
+      queueId: queue.id!,
+      queueName: queue.name,
+      slug: queue.slug,
+      status: queue.status,
+      waiting: await byStatus(TicketStatus.waiting),
+      called: await byStatus(TicketStatus.called),
+      serving: await byStatus(TicketStatus.serving),
+      counters: counters,
+      avgServiceSec: queue.avgServiceSec,
+      sampleCount: queue.sampleCount,
+    );
+  }
+
   // -- internals ----------------------------------------------------------
 
   /// Token hashes must never leave the server.
@@ -529,7 +689,10 @@ class QueueService {
     operation,
   ) async {
     final queue = await _queueBySlug(session, slug);
-    return withQueueLock(session, queue.id!, operation);
+    final result = await withQueueLock(session, queue.id!, operation);
+    // Fan-out after commit: watchers recompute their own views.
+    await notifyChanged(session, queue.id!);
+    return result;
   }
 
   static Future<T> _withCounterLock<T>(
@@ -548,17 +711,23 @@ class QueueService {
     final queue = await Queue.db.findById(session, counter.queueId);
     if (queue == null) throw QueueError(message: 'Queue not found.');
     requireOwner(session, queue);
-    return withQueueLock(session, queue.id!, (session, tx, locked) async {
-      final current = await Counter.db.findById(
-        session,
-        counterId,
-        transaction: tx,
-      );
-      if (current == null || !current.active) {
-        throw QueueError(message: 'Counter is not available.');
-      }
-      return operation(session, tx, locked, current);
-    });
+    final result = await withQueueLock(
+      session,
+      queue.id!,
+      (session, tx, locked) async {
+        final current = await Counter.db.findById(
+          session,
+          counterId,
+          transaction: tx,
+        );
+        if (current == null || !current.active) {
+          throw QueueError(message: 'Counter is not available.');
+        }
+        return operation(session, tx, locked, current);
+      },
+    );
+    await notifyChanged(session, queue.id!);
+    return result;
   }
 
   static Future<T> _withTicketLock<T>(
@@ -577,15 +746,21 @@ class QueueService {
     final queue = await Queue.db.findById(session, ticket.queueId);
     if (queue == null) throw QueueError(message: 'Queue not found.');
     requireOwner(session, queue);
-    return withQueueLock(session, queue.id!, (session, tx, locked) async {
-      final current = await Ticket.db.findById(
-        session,
-        ticketId,
-        transaction: tx,
-      );
-      if (current == null) throw QueueError(message: 'Ticket not found.');
-      return operation(session, tx, locked, current);
-    });
+    final result = await withQueueLock(
+      session,
+      queue.id!,
+      (session, tx, locked) async {
+        final current = await Ticket.db.findById(
+          session,
+          ticketId,
+          transaction: tx,
+        );
+        if (current == null) throw QueueError(message: 'Ticket not found.');
+        return operation(session, tx, locked, current);
+      },
+    );
+    await notifyChanged(session, queue.id!);
+    return result;
   }
 
   static Future<Ticket?> _callNextLocked(

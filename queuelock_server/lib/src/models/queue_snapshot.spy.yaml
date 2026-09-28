@@ -1,0 +1,14 @@
+### Live staff-facing snapshot of a queue. Recomputed server-side on
+### every queue change; the client only renders.
+class: QueueSnapshot
+fields:
+  queueId: int
+  queueName: String
+  slug: String
+  status: QueueStatus
+  waiting: List<TicketPublic>
+  called: List<TicketPublic>
+  serving: List<TicketPublic>
+  counters: List<Counter>
+  avgServiceSec: double
+  sampleCount: int

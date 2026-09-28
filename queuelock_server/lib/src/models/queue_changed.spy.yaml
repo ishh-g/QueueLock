@@ -1,0 +1,6 @@
+### "Queue changed" ping on the per-queue message channel. Carries no
+### state: every open stream recomputes its own view from the database,
+### so a missed message can never leave a client wrong.
+class: QueueChanged
+fields:
+  queueId: int

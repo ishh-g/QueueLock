@@ -356,6 +356,16 @@ class Endpoints extends _is.EndpointDispatch {
                     params['status'],
                   ),
         ),
+        'myQueues': _is.MethodConnector(
+          name: 'myQueues',
+          params: {},
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['admin'] as _i5t1w2d2.AdminEndpoint)
+                  .myQueues(session),
+        ),
       },
     );
     connectors['audit'] = _is.EndpointConnector(
@@ -529,6 +539,28 @@ class Endpoints extends _is.EndpointDispatch {
                     params['ticketId'],
                   ),
         ),
+        'watchQueue': _is.MethodStreamConnector(
+          name: 'watchQueue',
+          params: {
+            'queueId': _is.ParameterDescription(
+              name: 'queueId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+          },
+          streamParams: {},
+          returnType: _is.MethodStreamReturnType.streamType,
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+                Map<String, Stream> streamParams,
+              ) => (endpoints['counter'] as _iavqe5qy.CounterEndpoint)
+                  .watchQueue(
+                    session,
+                    params['queueId'],
+                  ),
+        ),
       },
     );
     connectors['queue'] = _is.EndpointConnector(
@@ -593,6 +625,27 @@ class Endpoints extends _is.EndpointDispatch {
               ) async => (endpoints['queue'] as _iu1irfsk.QueueEndpoint).info(
                 session,
                 params['slug'],
+              ),
+        ),
+        'watch': _is.MethodStreamConnector(
+          name: 'watch',
+          params: {
+            'token': _is.ParameterDescription(
+              name: 'token',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          streamParams: {},
+          returnType: _is.MethodStreamReturnType.streamType,
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+                Map<String, Stream> streamParams,
+              ) => (endpoints['queue'] as _iu1irfsk.QueueEndpoint).watch(
+                session,
+                params['token'],
               ),
         ),
       },

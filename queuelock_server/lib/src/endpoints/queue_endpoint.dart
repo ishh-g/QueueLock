@@ -22,4 +22,18 @@ class QueueEndpoint extends Endpoint {
   Future<QueueInfo> info(Session session, String slug) {
     return QueueService.info(session, slug);
   }
+
+  /// Live ticket stream. Emits a fresh server-computed [TicketView]
+  /// immediately and on every queue change. On reconnect the client
+  /// resubscribes and gets a fresh view.
+  Stream<TicketView> watch(Session session, String token) async* {
+    final queueId = await QueueService.queueIdForToken(session, token);
+    final updates = session.messages.createStream<QueueChanged>(
+      QueueService.channelFor(queueId),
+    );
+    yield await QueueService.ticketView(session, token);
+    await for (final _ in updates) {
+      yield await QueueService.ticketView(session, token);
+    }
+  }
 }

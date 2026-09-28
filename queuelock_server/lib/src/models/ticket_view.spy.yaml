@@ -1,0 +1,16 @@
+### Live customer-facing view of one ticket. Recomputed server-side on
+### every queue change; the client only renders.
+class: TicketView
+fields:
+  queueId: int
+  queueSlug: String
+  queueName: String
+  number: int
+  nickname: String?
+  status: TicketStatus
+  position: int
+  etaSeconds: int?
+  counterName: String?
+  arriveInSec: int?
+  receiptSeq: int?
+  receiptHash: String?

@@ -13,6 +13,7 @@ admin:
   - createQueue:
   - addCounter:
   - setStatus:
+  - myQueues:
 audit:
   - ledger:
   - verify:
@@ -22,9 +23,11 @@ counter:
   - startServing:
   - complete:
   - skip:
+  - watchQueue:
 queue:
   - join:
   - leave:
   - info:
+  - watch:
 greeting:
   - hello:
