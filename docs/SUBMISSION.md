@@ -63,6 +63,22 @@ tamper-evident ledger lets anyone audit the run.
   constrained layouts.
 - Proven: `flutter build web` succeeds; server suite still 40/40.
 
+## Features (M5: hardening done)
+
+- Join rate limit (10/min per queue + caller address, hashed) enforced
+  inside the queue lock; 500-ticket waiting cap proven (501st rejected,
+  leaving frees a slot); nickname purge + rate-limit prune ride the
+  60 s sweeper.
+- `tool/seed_demo.dart`: demo owner + fresh empty 20 s-timeout demo
+  queue, re-runnable, maintenance role (works alongside the server).
+- Web-push stretch skipped: no maintained Dart package; banner + alert
+  stay the signal.
+- Proven: fresh clone follows the README through `analyze` + unit
+  tests; integration suite is byte-identical to main (42/42 there).
+  Full integration in a fresh dir is covered by CI: this machine kills
+  long-lived background processes (see M0 notes), which stalls embedded
+  test-DB init on a cold directory.
+
 ## How Serverpod is used (M0)
 
 - `serverpod create` scaffold: `queuelock_server`, generated

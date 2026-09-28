@@ -20,6 +20,7 @@ import 'package:serverpod_auth_idp_client/serverpod_auth_idp_client.dart'
 import 'package:serverpod_client/serverpod_client.dart' as _isc;
 import 'counter.dart' as _i1h51zb1;
 import 'greetings/greeting.dart' as _izw8z7ou;
+import 'join_rate_limit_hit.dart' as _ijrwl3q5;
 import 'join_receipt.dart' as _i8mw49jm;
 import 'ledger_entry.dart' as _ivha9tke;
 import 'ledger_type.dart' as _ilcdwnij;
@@ -37,6 +38,7 @@ import 'ticket_view.dart' as _iz9n3kug;
 import 'verify_result.dart' as _iowd800h;
 export 'counter.dart';
 export 'greetings/greeting.dart';
+export 'join_rate_limit_hit.dart';
 export 'join_receipt.dart';
 export 'ledger_entry.dart';
 export 'ledger_type.dart';
@@ -94,6 +96,9 @@ class Protocol extends _isc.SerializationManager {
     if (t == _izw8z7ou.Greeting) {
       return _izw8z7ou.Greeting.fromJson(data) as T;
     }
+    if (t == _ijrwl3q5.JoinRateLimitHit) {
+      return _ijrwl3q5.JoinRateLimitHit.fromJson(data) as T;
+    }
     if (t == _i8mw49jm.JoinReceipt) {
       return _i8mw49jm.JoinReceipt.fromJson(data) as T;
     }
@@ -144,6 +149,10 @@ class Protocol extends _isc.SerializationManager {
     }
     if (t == _isc.getType<_izw8z7ou.Greeting?>()) {
       return (data != null ? _izw8z7ou.Greeting.fromJson(data) : null) as T;
+    }
+    if (t == _isc.getType<_ijrwl3q5.JoinRateLimitHit?>()) {
+      return (data != null ? _ijrwl3q5.JoinRateLimitHit.fromJson(data) : null)
+          as T;
     }
     if (t == _isc.getType<_i8mw49jm.JoinReceipt?>()) {
       return (data != null ? _i8mw49jm.JoinReceipt.fromJson(data) : null) as T;
@@ -227,6 +236,7 @@ class Protocol extends _isc.SerializationManager {
     return switch (type) {
       _i1h51zb1.Counter => 'Counter',
       _izw8z7ou.Greeting => 'Greeting',
+      _ijrwl3q5.JoinRateLimitHit => 'JoinRateLimitHit',
       _i8mw49jm.JoinReceipt => 'JoinReceipt',
       _ivha9tke.LedgerEntry => 'LedgerEntry',
       _ilcdwnij.LedgerType => 'LedgerType',
@@ -260,6 +270,8 @@ class Protocol extends _isc.SerializationManager {
         return 'Counter';
       case _izw8z7ou.Greeting():
         return 'Greeting';
+      case _ijrwl3q5.JoinRateLimitHit():
+        return 'JoinRateLimitHit';
       case _i8mw49jm.JoinReceipt():
         return 'JoinReceipt';
       case _ivha9tke.LedgerEntry():
@@ -317,6 +329,9 @@ class Protocol extends _isc.SerializationManager {
     }
     if (dataClassName == 'Greeting') {
       return deserialize<_izw8z7ou.Greeting>(data['data']);
+    }
+    if (dataClassName == 'JoinRateLimitHit') {
+      return deserialize<_ijrwl3q5.JoinRateLimitHit>(data['data']);
     }
     if (dataClassName == 'JoinReceipt') {
       return deserialize<_i8mw49jm.JoinReceipt>(data['data']);

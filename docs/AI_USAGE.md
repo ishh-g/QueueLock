@@ -57,3 +57,19 @@ Disclosed per the hackathon rules (AI-tool use must be in the submission text).
 - New dependencies: `qr_flutter` (spec section 13 names it), `web` +
   `flutter_web_plugins` interop for vibrate/beep "when the browser
   allows".
+
+## M5 (Sep 28, 2026)
+
+- Same tool. Used for: join rate limit, cap proof test, demo seed,
+  README refresh.
+- Rate-limit design note: endpoint sessions expose the caller address
+  via `Session.request.remoteInfo` (Forwarded/XFF/connection fallback);
+  it is hashed (SHA-256, never stored raw) and enforced inside the
+  queue-lock transaction. Unknown address (tests, internal calls) skips
+  the check — every production HTTP call carries one.
+- Web-push stretch: checked, skipped — no maintained Dart-native
+  server package for Web Push (VAPID + RFC 8291 encryption); hand-
+  rolling the crypto is out of scope. In-app banner + beep/vibrate stay
+  the call signal (already built in M4).
+- Repo moved `OneDrive\Desktop\QueueLock` → `C:\src\QueueLock`: sync
+  locks kept killing builds. Fresh-clone run passed (see below).

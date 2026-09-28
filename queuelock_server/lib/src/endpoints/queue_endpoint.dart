@@ -10,7 +10,22 @@ class QueueEndpoint extends Endpoint {
   /// Joins the open queue [slug] with [nickname]. Returns the receipt;
   /// the token is shown to the customer exactly once.
   Future<JoinReceipt> join(Session session, String slug, String nickname) {
-    return QueueService.join(session, slug, nickname);
+    return QueueService.join(
+      session,
+      slug,
+      nickname,
+      remoteIp: _remoteIp(session),
+    );
+  }
+
+  /// Caller address for abuse protection. Null for non-HTTP sessions
+  /// (tests, internal calls), where the rate limit is skipped.
+  static String? _remoteIp(Session session) {
+    try {
+      return session.request?.remoteInfo;
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Cancels the ticket identified by [token].

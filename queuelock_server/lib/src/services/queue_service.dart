@@ -25,6 +25,11 @@ class QueueService {
   /// Maximum waiting tickets per queue.
   static const int waitingCap = 500;
 
+  /// Join rate limit: at most this many joins per minute per queue and
+  /// caller address.
+  static const int maxJoinsPerMinute = 10;
+  static const Duration rateLimitWindow = Duration(minutes: 1);
+
   /// Bounds for the per-queue call timeout setting.
   static const int minCallTimeoutSec = 10;
   static const int maxCallTimeoutSec = 86400;
@@ -229,15 +234,23 @@ class QueueService {
 
   /// Joins the open queue with [slug]. Returns the receipt; the token inside
   /// is the only time the customer ever sees it.
+  ///
+  /// [remoteIp] is the caller address for the join rate limit. It is null
+  /// for non-HTTP sessions (tests, internal calls), where the limit is
+  /// skipped: every production HTTP call carries an address.
   static Future<JoinReceipt> join(
     Session session,
     String slug,
-    String nickname,
-  ) {
+    String nickname, {
+    String? remoteIp,
+  }) {
     final clean = sanitizeNickname(nickname);
     return _withQueueLockBySlug(session, slug, (session, tx, queue) async {
       if (queue.status != QueueStatus.open) {
         throw QueueError(message: 'This queue is not open right now.');
+      }
+      if (remoteIp != null) {
+        await _enforceJoinRateLimit(session, tx, queue.id!, remoteIp);
       }
       final waiting = await Ticket.db.count(
         session,
@@ -751,6 +764,48 @@ class QueueService {
   }
 
   // -- timeouts, sweeper, retention ---------------------------------------
+
+  /// Records one counted join and rejects past the per-minute budget.
+  /// Runs inside the queue lock, so concurrent floods cannot slip through.
+  static Future<void> _enforceJoinRateLimit(
+    Session session,
+    Transaction transaction,
+    int queueId,
+    String remoteIp,
+  ) async {
+    final nowMs = DateTime.now().toUtc().millisecondsSinceEpoch;
+    final cutoff = nowMs - rateLimitWindow.inMilliseconds;
+    final ipHash = TicketTokens.tokenHashFor(remoteIp);
+    final recent = await JoinRateLimitHit.db.count(
+      session,
+      where: (t) =>
+          t.queueId.equals(queueId) &
+          t.ipHash.equals(ipHash) &
+          (t.tsMs > cutoff),
+      transaction: transaction,
+    );
+    if (recent >= maxJoinsPerMinute) {
+      throw QueueError(
+        message: 'Too many joins from this device, try again in a minute.',
+      );
+    }
+    await JoinRateLimitHit.db.insertRow(
+      session,
+      JoinRateLimitHit(queueId: queueId, ipHash: ipHash, tsMs: nowMs),
+      transaction: transaction,
+    );
+  }
+
+  /// Prunes spent rate-limit rows. Called by the sweeper every minute.
+  static Future<void> pruneRateLimitHits(Session session) async {
+    final cutoff =
+        DateTime.now().toUtc().millisecondsSinceEpoch -
+        rateLimitWindow.inMilliseconds;
+    await JoinRateLimitHit.db.deleteWhere(
+      session,
+      where: (t) => (t.tsMs < cutoff),
+    );
+  }
 
   /// Identifier of the single recurring sweeper chain.
   static const String sweeperIdentifier = 'queuelock-sweeper';

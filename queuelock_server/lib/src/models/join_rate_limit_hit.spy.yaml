@@ -1,0 +1,12 @@
+### One counted join for abuse protection. Stores only a hash of the
+### caller address, never the address itself. Rows older than a minute
+### are pruned by the sweeper.
+class: JoinRateLimitHit
+table: join_rate_limit_hit
+fields:
+  queueId: int
+  ipHash: String
+  tsMs: int
+indexes:
+  join_rate_limit_lookup_idx:
+    fields: queueId, ipHash, tsMs
