@@ -4,6 +4,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:queuelock_client/queuelock_client.dart';
 
 import '../client.dart';
+import '../theme.dart';
 import '../widgets/status_chip.dart';
 import 'sign_in_screen.dart';
 
@@ -177,20 +178,68 @@ class _Body extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        if (reconnecting)
-          const Padding(
-            padding: EdgeInsets.only(bottom: 8),
-            child: Text('Reconnecting…'),
+    final dark = theme.brightness == Brightness.dark;
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: dark
+              ? [AppTheme.pine, AppTheme.darkBackground]
+              : [const Color(0xFFDCE8D2), AppTheme.cream],
+        ),
+      ),
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          if (reconnecting)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 8),
+              child: Text('Reconnecting…'),
+            ),
+          Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: const ShapeDecoration(
+                  color: AppTheme.pine,
+                  shape: StadiumBorder(),
+                ),
+                child: const Icon(
+                  Icons.dashboard_outlined,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      snap.queueName,
+                      style: theme.textTheme.headlineSmall,
+                    ),
+                    Text(
+                      '/q/${snap.slug}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              StatusChip(
+                statusName: snap.status.name,
+                label: snap.status.name,
+              ),
+            ],
           ),
-        Text(snap.queueName, style: theme.textTheme.headlineSmall),
-        Text('Join at /q/${snap.slug}'),
-        const SizedBox(height: 8),
-        _JoinQr(slug: snap.slug),
-        const SizedBox(height: 8),
-        Wrap(
+          const SizedBox(height: 12),
+          _JoinQr(slug: snap.slug),
+          const SizedBox(height: 8),
+          Wrap(
           spacing: 8,
           runSpacing: 8,
           crossAxisAlignment: WrapCrossAlignment.center,
@@ -257,8 +306,10 @@ class _Body extends StatelessWidget {
         const Divider(height: 32),
         _TicketSection(
           title: 'Called',
+          count: snap.called.length,
           tickets: snap.called,
           busy: busy,
+          tint: AppTheme.rose,
           onStartServing: onStartServing,
           onComplete: onComplete,
           onCompleteAndNext: onCompleteAndNext,
@@ -266,15 +317,18 @@ class _Body extends StatelessWidget {
         ),
         _TicketSection(
           title: 'Serving',
+          count: snap.serving.length,
           tickets: snap.serving,
           busy: busy,
+          tint: AppTheme.ready,
           onStartServing: onStartServing,
           onComplete: onComplete,
           onCompleteAndNext: onCompleteAndNext,
           onSkip: onSkip,
         ),
         _TicketSection(
-          title: 'Waiting (${snap.waiting.length})',
+          title: 'Waiting',
+          count: snap.waiting.length,
           tickets: snap.waiting,
           busy: busy,
           onStartServing: onStartServing,
@@ -283,7 +337,8 @@ class _Body extends StatelessWidget {
           onSkip: onSkip,
         ),
       ],
-    );
+    ),
+  );
   }
 }
 
@@ -296,27 +351,49 @@ class _JoinQr extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final url = '${Uri.base.origin}/q/$slug';
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            QrImageView(data: url, size: 140),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Customer join link',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 4),
-                  SelectableText(url),
-                ],
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: AppTheme.rose, width: 1.5),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Card(
+        margin: EdgeInsets.zero,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              QrImageView(data: url, size: 140),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.qr_code_2_outlined,
+                          size: 20,
+                          color: AppTheme.rose,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Customer join link',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    SelectableText(url),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Print this page or show it at the venue.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -325,8 +402,10 @@ class _JoinQr extends StatelessWidget {
 
 class _TicketSection extends StatelessWidget {
   final String title;
+  final int? count;
   final List<TicketPublic> tickets;
   final bool busy;
+  final Color? tint;
   final ValueChanged<int> onStartServing;
   final ValueChanged<int> onComplete;
   final ValueChanged<int> onCompleteAndNext;
@@ -334,8 +413,10 @@ class _TicketSection extends StatelessWidget {
 
   const _TicketSection({
     required this.title,
+    this.count,
     required this.tickets,
     required this.busy,
+    this.tint,
     required this.onStartServing,
     required this.onComplete,
     required this.onCompleteAndNext,
@@ -347,11 +428,37 @@ class _TicketSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: Theme.of(context).textTheme.titleMedium),
+        Row(
+          children: [
+            Text(title, style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
+              decoration: ShapeDecoration(
+                color: (tint ?? AppTheme.moss).withValues(alpha: 0.18),
+                shape: const StadiumBorder(),
+              ),
+              child: Text(
+                '${count ?? tickets.length}',
+                style: TextStyle(
+                  color: tint ?? AppTheme.mossDeep,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
         if (tickets.isEmpty) const Text('—'),
         for (final t in tickets)
           Card(
             key: ValueKey('ticket-${t.id}'),
+            color: tint == null
+                ? null
+                : Theme.of(context).brightness == Brightness.dark
+                ? tint!.withValues(alpha: 0.10)
+                : tint!.withValues(alpha: 0.08),
             child: ListTile(
               leading: StatusChip(
                 statusName: t.status.name,
