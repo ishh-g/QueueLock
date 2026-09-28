@@ -10,6 +10,7 @@
 // ignore_for_file: invalid_use_of_internal_member
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
+import 'package:queuelock_server/src/generated/future_calls.dart' as _itlmibm2;
 import 'package:queuelock_server/src/generated/queue_status.dart' as _ia69pvbs;
 import 'package:serverpod/serverpod.dart' as _is;
 import 'package:serverpod_auth_core_server/serverpod_auth_core_server.dart'
@@ -23,6 +24,7 @@ import '../endpoints/audit_endpoint.dart' as _irhfmlkv;
 import '../endpoints/counter_endpoint.dart' as _iavqe5qy;
 import '../endpoints/queue_endpoint.dart' as _iu1irfsk;
 import '../greetings/greeting_endpoint.dart' as _il624ik7;
+export 'future_calls.dart' show ServerpodFutureCallsGetter;
 
 class Endpoints extends _is.EndpointDispatch {
   @override
@@ -679,5 +681,10 @@ class Endpoints extends _is.EndpointDispatch {
       ..initializeEndpoints(server);
     modules['serverpod_auth_core'] = _iacs.Endpoints()
       ..initializeEndpoints(server);
+  }
+
+  @override
+  _is.FutureCallDispatch? get futureCalls {
+    return _itlmibm2.FutureCalls();
   }
 }

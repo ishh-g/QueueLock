@@ -3,7 +3,9 @@ import 'dart:math';
 import 'package:serverpod/serverpod.dart';
 import 'package:serverpod_auth_idp_server/core.dart';
 
+import '../generated/future_calls.dart';
 import '../generated/protocol.dart';
+import 'estimator.dart';
 import 'ledger_service.dart';
 import 'ticket_tokens.dart';
 
@@ -321,13 +323,15 @@ class QueueService {
   /// Calls the longest-waiting ticket to [counterId]. Returns the called
   /// ticket, or null when nobody is waiting. The row lock makes concurrent
   /// counters race-free: each ticket is called exactly once.
-  static Future<Ticket?> callNext(Session session, int counterId) {
-    return _withCounterLock(session, counterId, (
+  static Future<Ticket?> callNext(Session session, int counterId) async {
+    var timeoutSec = minCallTimeoutSec;
+    final called = await _withCounterLock(session, counterId, (
       session,
       tx,
       queue,
       counter,
     ) async {
+      timeoutSec = queue.callTimeoutSec;
       final next = await Ticket.db.findFirstRow(
         session,
         where: (t) =>
@@ -356,6 +360,16 @@ class QueueService {
       );
       return _redacted(called);
     });
+    if (called != null) {
+      // After commit only: arm this call's timeout.
+      await scheduleTimeout(
+        session,
+        ticketId: called.id!,
+        callId: called.callId,
+        timeoutSec: timeoutSec,
+      );
+    }
+    return called;
   }
 
   /// Moves a called ticket into service. Only staff move tickets here; a
@@ -397,13 +411,15 @@ class QueueService {
     Session session,
     int ticketId, {
     bool callNext = false,
-  }) {
-    return _withTicketLock(session, ticketId, (
+  }) async {
+    var timeoutSec = minCallTimeoutSec;
+    final next = await _withTicketLock(session, ticketId, (
       session,
       tx,
       queue,
       ticket,
     ) async {
+      timeoutSec = queue.callTimeoutSec;
       if (ticket.status != TicketStatus.serving) {
         throw QueueError(message: 'Only a serving ticket can complete.');
       }
@@ -415,10 +431,41 @@ class QueueService {
         ),
         transaction: tx,
       );
+      // Learn from this real service time, in the same transaction.
+      var queueForAppend = queue;
+      final servingAt = ticket.servingAt;
+      final doneAt = updated.doneAt!;
+      if (servingAt != null && !doneAt.isBefore(servingAt)) {
+        final durationSec =
+            doneAt.difference(servingAt).inMilliseconds / 1000.0;
+        final next = Estimator.nextAverage(
+          avg: queue.avgServiceSec,
+          sampleCount: queue.sampleCount,
+          sample: durationSec,
+        );
+        await ServiceSample.db.insertRow(
+          session,
+          ServiceSample(
+            queueId: queue.id!,
+            counterId: updated.counterId,
+            hourOfDay: doneAt.toUtc().hour,
+            durationSec: durationSec,
+          ),
+          transaction: tx,
+        );
+        queueForAppend = await Queue.db.updateRow(
+          session,
+          queue.copyWith(
+            avgServiceSec: next.avg,
+            sampleCount: next.count,
+          ),
+          transaction: tx,
+        );
+      }
       final appended = await LedgerService.append(
         session,
         tx,
-        queue,
+        queueForAppend,
         type: LedgerType.completed,
         ticketNumber: updated.number,
         counterId: updated.counterId,
@@ -433,6 +480,15 @@ class QueueService {
       }
       return null;
     });
+    if (next != null) {
+      await scheduleTimeout(
+        session,
+        ticketId: next.id!,
+        callId: next.callId,
+        timeoutSec: timeoutSec,
+      );
+    }
+    return next;
   }
 
   /// Takes a called (or serving) ticket out of the flow. Terminal.
@@ -605,6 +661,25 @@ class QueueService {
       orderBy: (t) => t.seq,
     );
 
+    final activeCounters = await Counter.db.find(
+      session,
+      where: (t) => t.queueId.equals(queue.id!) & t.active.equals(true),
+    );
+    final activeIds = {for (final c in activeCounters) c.id!};
+    var allBusy = false;
+    if (activeIds.isNotEmpty) {
+      final serving = await Ticket.db.find(
+        session,
+        where: (t) =>
+            t.queueId.equals(queue.id!) & t.status.equals(TicketStatus.serving),
+      );
+      final busyIds = {
+        for (final t in serving)
+          if (t.counterId != null) t.counterId!,
+      };
+      allBusy = activeIds.every(busyIds.contains);
+    }
+
     return TicketView(
       queueId: queue.id!,
       queueSlug: queue.slug,
@@ -613,6 +688,13 @@ class QueueService {
       nickname: ticket.nickname,
       status: ticket.status,
       position: position,
+      etaSeconds: Estimator.etaSeconds(
+        waitingAhead: position,
+        activeCounters: activeIds.length,
+        avgServiceSec: queue.avgServiceSec,
+        allCountersBusy: allBusy,
+        sampleCount: queue.sampleCount,
+      ),
       counterName: counterName,
       arriveInSec: arriveInSec,
       receiptSeq: receipt?.seq,
@@ -666,6 +748,182 @@ class QueueService {
       avgServiceSec: queue.avgServiceSec,
       sampleCount: queue.sampleCount,
     );
+  }
+
+  // -- timeouts, sweeper, retention ---------------------------------------
+
+  /// Identifier of the single recurring sweeper chain.
+  static const String sweeperIdentifier = 'queuelock-sweeper';
+
+  /// Per-process guard so the sweeper chain is ensured once.
+  static bool _sweeperEnsured = false;
+
+  /// Schedules the per-ticket timeout call. Must run after commit only.
+  static Future<void> scheduleTimeout(
+    Session session, {
+    required int ticketId,
+    required int callId,
+    required int timeoutSec,
+  }) async {
+    await ensureSweeper(session);
+    await session.serverpod.futureCalls
+        .callWithDelay(Duration(seconds: timeoutSec))
+        .callTimeout
+        .timeoutTicket(ticketId, callId);
+  }
+
+  /// Ensures exactly one recurring sweeper chain exists. Cancel-then-
+  /// schedule also clears chains orphaned by a crash, and the sweeper
+  /// body itself is idempotent, so overlap is harmless. (Single-process
+  /// MVP: a multi-instance deployment would need a stronger guard.)
+  static Future<void> ensureSweeper(Session session) async {
+    if (_sweeperEnsured) return;
+    _sweeperEnsured = true;
+    await session.serverpod.futureCalls.cancel(sweeperIdentifier);
+    await session.serverpod.futureCalls
+        .callRecurring(identifier: sweeperIdentifier)
+        .every(const Duration(seconds: 60))
+        .sweeper
+        .sweep();
+  }
+
+  /// Grace re-insertion: the orderKey placing a ticket after the next 3
+  /// waiting tickets. [sortedKeys] must be sorted ascending and must not
+  /// contain the re-entering ticket itself. Pure and unit-tested.
+  static double reinsertOrderKey(
+    List<double> sortedKeys,
+    double fallbackNumber,
+  ) {
+    if (sortedKeys.length >= 4) {
+      return (sortedKeys[2] + sortedKeys[3]) / 2;
+    }
+    if (sortedKeys.length == 3) {
+      return sortedKeys[2] + 1;
+    }
+    if (sortedKeys.isNotEmpty) {
+      return sortedKeys.reduce(max) + 1;
+    }
+    return fallbackNumber;
+  }
+
+  /// Applies one call timeout. Idempotent: acts only when the ticket is
+  /// still `called` with the same [callId] and its grace period has
+  /// actually passed; anything else is a no-op. Returns true when state
+  /// changed (and watchers were notified).
+  static Future<bool> applyCallTimeout(
+    Session session,
+    int ticketId,
+    int callId,
+  ) async {
+    final ticket = await Ticket.db.findById(session, ticketId);
+    if (ticket == null) return false;
+    var changed = false;
+    await withQueueLock(session, ticket.queueId, (session, tx, queue) async {
+      final current = await Ticket.db.findById(
+        session,
+        ticketId,
+        transaction: tx,
+      );
+      if (current == null) return;
+      if (current.status != TicketStatus.called || current.callId != callId) {
+        return;
+      }
+      if (current.calledAt == null) return;
+      final elapsed = DateTime.now().toUtc().difference(current.calledAt!);
+      if (elapsed.inSeconds < queue.callTimeoutSec) return;
+      if (current.reentries >= 1) {
+        // Second miss: out of the queue.
+        await Ticket.db.updateRow(
+          session,
+          current.copyWith(status: TicketStatus.skipped),
+          transaction: tx,
+        );
+        await LedgerService.append(
+          session,
+          tx,
+          queue,
+          type: LedgerType.skipped,
+          ticketNumber: current.number,
+          counterId: current.counterId,
+        );
+      } else {
+        // First miss: back to waiting, three tickets ahead of it.
+        final waitingKeys = (await Ticket.db.find(
+          session,
+          where: (t) =>
+              t.queueId.equals(queue.id!) &
+              t.status.equals(TicketStatus.waiting),
+          orderBy: (t) => t.orderKey,
+          transaction: tx,
+        )).map((t) => t.orderKey).toList();
+        await Ticket.db.updateRow(
+          session,
+          current.copyWith(
+            status: TicketStatus.waiting,
+            orderKey: reinsertOrderKey(
+              waitingKeys,
+              current.number.toDouble(),
+            ),
+            reentries: 1,
+            calledAt: null,
+            counterId: null,
+          ),
+          transaction: tx,
+        );
+        await LedgerService.append(
+          session,
+          tx,
+          queue,
+          type: LedgerType.reentered,
+          ticketNumber: current.number,
+        );
+      }
+      changed = true;
+    });
+    if (changed) await notifyChanged(session, ticket.queueId);
+    return changed;
+  }
+
+  /// Sweeper body: applies every expired called timeout through the same
+  /// idempotent path as the scheduled call, so it only recovers work the
+  /// per-ticket call missed (e.g. crash between commit and scheduling).
+  static Future<void> sweepCalledTimeouts(Session session) async {
+    final now = DateTime.now().toUtc();
+    final called = await Ticket.db.find(
+      session,
+      where: (t) => t.status.equals(TicketStatus.called),
+    );
+    for (final ticket in called) {
+      if (ticket.calledAt == null) continue;
+      final queue = await Queue.db.findById(session, ticket.queueId);
+      if (queue == null) continue;
+      if (now.difference(ticket.calledAt!).inSeconds >= queue.callTimeoutSec) {
+        await applyCallTimeout(session, ticket.id!, ticket.callId);
+      }
+    }
+  }
+
+  /// Data minimisation: forgets nicknames older than 24 hours. The ledger
+  /// never stores nicknames, so the chain is unaffected. Returns how many
+  /// nicknames were purged.
+  static Future<int> purgeOldNicknames(Session session) async {
+    final cutoff = DateTime.now().toUtc().subtract(
+      const Duration(hours: 24),
+    );
+    final stale = await Ticket.db.find(
+      session,
+      where: (t) => (t.joinedAt < cutoff),
+    );
+    var purged = 0;
+    for (final ticket in stale) {
+      if (ticket.nickname == null) continue;
+      await Ticket.db.updateRow(
+        session,
+        ticket.copyWith(nickname: null),
+      );
+      purged++;
+    }
+    return purged;
   }
 
   // -- internals ----------------------------------------------------------

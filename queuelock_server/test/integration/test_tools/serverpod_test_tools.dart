@@ -14,6 +14,9 @@
 import 'dart:async' as _ida;
 import 'dart:io' as _idi;
 import 'package:queuelock_server/src/generated/counter.dart' as _ijpohaca;
+import 'package:queuelock_server/src/generated/future_calls.dart' as _itlmibm2;
+import 'package:queuelock_server/src/generated/future_calls_generated_models/call_timeout_future_call_timeout_ticket_model.dart'
+    as _i02urhip;
 import 'package:queuelock_server/src/generated/greetings/greeting.dart'
     as _iqpktv65;
 import 'package:queuelock_server/src/generated/join_receipt.dart' as _ij9t62i8;
@@ -163,6 +166,8 @@ void withServerpod(
 }
 
 class TestEndpoints {
+  late final futureCalls = _FutureCalls();
+
   late final _EmailIdpEndpoint emailIdp;
 
   late final _JwtRefreshEndpoint jwtRefresh;
@@ -214,6 +219,12 @@ class _InternalTestEndpoints extends TestEndpoints
       serializationManager,
     );
   }
+}
+
+class _FutureCalls {
+  late final callTimeout = _CallTimeoutFutureCall();
+
+  late final sweeper = _SweeperFutureCall();
 }
 
 class _EmailIdpEndpoint {
@@ -1148,5 +1159,43 @@ class _GreetingEndpoint {
         await _localUniqueSession.close();
       }
     });
+  }
+}
+
+class _CallTimeoutFutureCall {
+  Future<void> timeoutTicket(
+    _ist.TestSessionBuilder sessionBuilder,
+    int ticketId,
+    int callId,
+  ) async {
+    var object = _i02urhip.CallTimeoutFutureCallTimeoutTicketModel(
+      ticketId: ticketId,
+      callId: callId,
+    );
+    var _localUniqueSession =
+        (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild();
+    try {
+      await _itlmibm2.CallTimeoutTimeoutTicketFutureCall().invoke(
+        _localUniqueSession,
+        object,
+      );
+    } finally {
+      await _localUniqueSession.close();
+    }
+  }
+}
+
+class _SweeperFutureCall {
+  Future<void> sweep(_ist.TestSessionBuilder sessionBuilder) async {
+    var _localUniqueSession =
+        (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild();
+    try {
+      await _itlmibm2.SweeperSweepFutureCall().invoke(
+        _localUniqueSession,
+        null,
+      );
+    } finally {
+      await _localUniqueSession.close();
+    }
   }
 }

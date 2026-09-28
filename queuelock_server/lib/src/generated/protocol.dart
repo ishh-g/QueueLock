@@ -20,6 +20,8 @@ import 'package:serverpod_auth_core_server/serverpod_auth_core_server.dart'
 import 'package:serverpod_auth_idp_server/serverpod_auth_idp_server.dart'
     as _iais;
 import 'counter.dart' as _i1h51zb1;
+import 'future_calls_generated_models/call_timeout_future_call_timeout_ticket_model.dart'
+    as _ihp34uu4;
 import 'greetings/greeting.dart' as _izw8z7ou;
 import 'join_receipt.dart' as _i8mw49jm;
 import 'ledger_entry.dart' as _ivha9tke;
@@ -554,6 +556,10 @@ class Protocol extends _is.DatabaseSerializationManager {
     if (t == _i1h51zb1.Counter) {
       return _i1h51zb1.Counter.fromJson(data) as T;
     }
+    if (t == _ihp34uu4.CallTimeoutFutureCallTimeoutTicketModel) {
+      return _ihp34uu4.CallTimeoutFutureCallTimeoutTicketModel.fromJson(data)
+          as T;
+    }
     if (t == _izw8z7ou.Greeting) {
       return _izw8z7ou.Greeting.fromJson(data) as T;
     }
@@ -604,6 +610,13 @@ class Protocol extends _is.DatabaseSerializationManager {
     }
     if (t == _is.getType<_i1h51zb1.Counter?>()) {
       return (data != null ? _i1h51zb1.Counter.fromJson(data) : null) as T;
+    }
+    if (t ==
+        _is.getType<_ihp34uu4.CallTimeoutFutureCallTimeoutTicketModel?>()) {
+      return (data != null
+              ? _ihp34uu4.CallTimeoutFutureCallTimeoutTicketModel.fromJson(data)
+              : null)
+          as T;
     }
     if (t == _is.getType<_izw8z7ou.Greeting?>()) {
       return (data != null ? _izw8z7ou.Greeting.fromJson(data) : null) as T;
@@ -692,6 +705,8 @@ class Protocol extends _is.DatabaseSerializationManager {
   static String? getClassNameForType(Type type) {
     return switch (type) {
       _i1h51zb1.Counter => 'Counter',
+      _ihp34uu4.CallTimeoutFutureCallTimeoutTicketModel =>
+        'CallTimeoutFutureCallTimeoutTicketModel',
       _izw8z7ou.Greeting => 'Greeting',
       _i8mw49jm.JoinReceipt => 'JoinReceipt',
       _ivha9tke.LedgerEntry => 'LedgerEntry',
@@ -724,6 +739,8 @@ class Protocol extends _is.DatabaseSerializationManager {
     switch (data) {
       case _i1h51zb1.Counter():
         return 'Counter';
+      case _ihp34uu4.CallTimeoutFutureCallTimeoutTicketModel():
+        return 'CallTimeoutFutureCallTimeoutTicketModel';
       case _izw8z7ou.Greeting():
         return 'Greeting';
       case _i8mw49jm.JoinReceipt():
@@ -784,6 +801,11 @@ class Protocol extends _is.DatabaseSerializationManager {
     }
     if (dataClassName == 'Counter') {
       return deserialize<_i1h51zb1.Counter>(data['data']);
+    }
+    if (dataClassName == 'CallTimeoutFutureCallTimeoutTicketModel') {
+      return deserialize<_ihp34uu4.CallTimeoutFutureCallTimeoutTicketModel>(
+        data['data'],
+      );
     }
     if (dataClassName == 'Greeting') {
       return deserialize<_izw8z7ou.Greeting>(data['data']);
