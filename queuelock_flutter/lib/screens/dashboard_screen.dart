@@ -351,6 +351,9 @@ class _JoinQr extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final url = '${Uri.base.origin}/q/$slug';
+    // Cream panel in both modes: pops on the page and scans reliably.
+    const panel = AppTheme.cream;
+    const onPanel = AppTheme.leaf;
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: AppTheme.rose, width: 1.5),
@@ -358,6 +361,7 @@ class _JoinQr extends StatelessWidget {
       ),
       child: Card(
         margin: EdgeInsets.zero,
+        color: panel,
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -368,26 +372,33 @@ class _JoinQr extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    const Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.qr_code_2_outlined,
                           size: 20,
                           color: AppTheme.rose,
                         ),
-                        const SizedBox(width: 6),
+                        SizedBox(width: 6),
                         Text(
                           'Customer join link',
-                          style: Theme.of(context).textTheme.titleMedium,
+                          style: TextStyle(
+                            color: onPanel,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 4),
-                    SelectableText(url),
+                    SelectableText(
+                      url,
+                      style: const TextStyle(color: onPanel),
+                    ),
                     const SizedBox(height: 4),
-                    Text(
+                    const Text(
                       'Print this page or show it at the venue.',
-                      style: Theme.of(context).textTheme.bodySmall,
+                      style: TextStyle(color: onPanel, fontSize: 13),
                     ),
                   ],
                 ),
