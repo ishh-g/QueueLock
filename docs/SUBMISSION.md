@@ -1,106 +1,103 @@
-# Submission (draft, M0)
-
-Maintained per `AGENTS.md` section 19. Only what works is listed.
+# QueueLock — hackathon submission
 
 ## Problem and users
 
-Small clinics, salons and shops in India run long physical queues. Customers
-cannot tell how long they will wait or whether the queue was run fairly.
-QueueLock is a data-minimised virtual queue: customers join from a QR code
-with just a nickname, see a live position and a learned wait estimate; staff
-call customers from several counters without double-calling; a public
-tamper-evident ledger lets anyone audit the run.
+Small clinics, salons and shops in India run long physical queues.
+Customers cannot tell how long they will wait, or whether the queue was
+run fairly. QueueLock is a data-minimised virtual queue: customers scan a
+QR code, join with just a nickname (no account, no app install), and see
+a live position plus a wait estimate learned from real service times.
+Staff at several counters call customers without ever calling the same
+person twice. A public, tamper-evident log lets anyone audit the run.
 
-## Features (M1: core domain done)
+## Features (only what works)
 
-- Queue/Counter/Ticket/LedgerEntry/ServiceSample models + migration.
-- `join` (receipt with one-time token + ledger seq/hash), `callNext`
-  (race-free across counters), `startServing`, `complete` (optional chained
-  `callNext`), `skip`, `leave`, queue `info`, ledger page, `verify`,
-  `checkReceipt`. Owner-only staff endpoints; ticket hashes never leave
-  the server.
-- Proven: 50 concurrent joins gap-free; 2×20 concurrent calls exactly
-  once; chain verifies, tamper located at exact seq; non-owner rejected.
+- **Join with a nickname** from a QR link (`/q/:slug`). One-time ticket
+  token in the URL; only its hash is stored. Join receipt (ledger seq +
+  hash) shown on the ticket page.
+- **Live ticket page** (`/t/:token`): big number, position, ETA, called
+  banner with countdown and counter name, fairness receipt, leave button,
+  visible reconnecting state.
+- **Staff dashboard** (`/staff/:queueId`): counter pick/add, big Call
+  next, Start / Done / Done+next / Skip, waiting/called/serving lists
+  updating live, Open/Pause/Close, QR join link, average service time.
+- **Missed-call grace**: first miss returns the ticket behind the next
+  three people; second miss skips it. Idempotent timeout handling via
+  per-call future calls plus a 60 s sweeper safety net.
+- **Learned wait estimates**: every completion records a real service
+  sample; EWMA average drives per-ticket ETAs ("about N min, based on M
+  recent services"; honest fallback with zero samples — never seeded).
+- **Public audit** (`/audit/:slug`): chain status (verified count or
+  first bad entry), paginated entries, check-your-receipt box.
+- **Abuse protection**: 10 joins/min per queue + caller address (hashed),
+  500-ticket waiting cap, nicknames purged after 24 h (the ledger never
+  holds them, so the chain survives).
+- **Proven by tests**: 50 concurrent joins gap-free; 2×20 concurrent
+  calls exactly once; chain verifies and tampering is located at the
+  exact entry; receipts check out; non-owners rejected; timeouts,
+  grace ordering and estimator covered. 42/42 green, analyzers clean.
 
-## Features (M2: realtime + screens done)
+## How Serverpod is used
 
-- `queue.watch(token)` → live `TicketView` (number, status, position,
-  called counter + seconds to arrive, fairness receipt); `counter
-  .watchQueue(queueId)` → live `QueueSnapshot` (waiting/called/serving,
-  counters, avg service time). Post-commit fan-out on per-queue channels;
-  streams recompute views from the DB, messages carry no state.
-- Flutter Web with path URLs: `/` landing, `/q/:slug` join, `/t/:token`
-  live ticket (called banner with countdown, receipt panel, leave),
-  `/staff` sign-in + queue list + create, `/staff/:queueId` counter
-  dashboard (pick counter, call next, start/complete/skip, status
-  switch, live lists). ETA shows a placeholder until the M3 estimator.
-- Proven: stream tests (subscribe → mutate → fresh view, no polling);
-  `flutter build web` succeeds.
+- **Transactional row locking**: every state change runs in one
+  transaction that loads the queue row `FOR UPDATE`
+  (`QueueService.withQueueLock`), serialising each queue and its ledger
+  chain; the ledger append commits atomically with the change.
+- **Streaming endpoints**: `watch` / `watchQueue` serve live views over
+  WebSockets; post-commit fan-out on per-queue message channels;
+  streams recompute from the DB, messages carry no state.
+- **FutureCalls**: per-ticket `CallTimeout` armed after commit;
+  recurring `Sweeper` (timeouts, nickname purge, rate-limit prune).
+- **ORM + migrations**: all models in `.spy.yaml`, versioned migrations.
+- **Auth**: email/password sign-in for staff (owner-only queues);
+  ticket-token customers need no account.
+- **Server-side ledger + estimator**: hash chain and EWMA computed and
+  enforced on the server; clients only render.
+- **Tests**: `withServerpod` groups with own embedded-Postgres databases
+  and real transactions.
 
-## Features (M3: timeouts + estimator done)
+## How it was built (AI disclosure)
 
-- Missed-call grace: first miss returns the ticket to waiting behind the
-  next three (orderKey midpoint rule), second miss skips it. Timeout
-  handler is idempotent (status + callId match required).
-- `CallTimeout` future call armed after every commit; recurring `Sweeper`
-  (60 s, single identifier-guarded chain) recovers missed timeouts and
-  purges nicknames older than 24 h.
-- Estimator: per-service samples, EWMA average (prior 300 s), live
-  `etaSeconds` in ticket views ("about N min, based on M recent
-  services", honest fallback with zero samples).
-- Proven: tests 4 (schedule row + sweeper re-entry at index 3 + skip +
-  idempotent re-runs), 5 (grace ordering unit), 6 (estimator unit).
+Built solo with OpenCode + Muse Spark (see `docs/AI_USAGE.md` for the
+per-milestone breakdown), Serverpod's own agent skills (accepted at
+scaffold), and `serverpod generate` for all protocol code. All business
+logic was written and reviewed as source; generated code was never
+hand-edited. Serverpod friction found along the way is logged in
+`docs/serverpod-feedback.md`.
 
-## Features (M4: audit + polish done)
+## Pilot
 
-- Public `/audit/:slug` page: chain status (verified count or first bad
-  seq), paginated entry list, "check my receipt" box.
-- QR join link on the staff dashboard (`qr_flutter`), built from the
-  page origin so it works on any host.
-- Best-effort call alert (vibration + beep where the browser allows;
-  the banner remains the reliable signal).
-- Loading/empty/error/reconnect states on every screen; mobile-first
-  constrained layouts.
-- Proven: `flutter build web` succeeds; server suite still 40/40.
+- Venue: TBD (real-world trial per `docs/PILOT.md` runbook).
+- Outcome: TBD.
 
-## Features (M5: hardening done)
+## Demo
 
-- Join rate limit (10/min per queue + caller address, hashed) enforced
-  inside the queue lock; 500-ticket waiting cap proven (501st rejected,
-  leaving frees a slot); nickname purge + rate-limit prune ride the
-  60 s sweeper.
-- `tool/seed_demo.dart`: demo owner + fresh empty 20 s-timeout demo
-  queue, re-runnable, maintenance role (works alongside the server).
-- Web-push stretch skipped: no maintained Dart package; banner + alert
-  stay the signal.
-- Proven: fresh clone follows the README through `analyze` + unit
-  tests; integration suite is byte-identical to main (42/42 there).
-  Full integration in a fresh dir is covered by CI: this machine kills
-  long-lived background processes (see M0 notes), which stalls embedded
-  test-DB init on a cold directory.
-
-## How Serverpod is used (M0)
-
-- `serverpod create` scaffold: `queuelock_server`, generated
-  `queuelock_client`, `queuelock_flutter`.
-- `serverpod start`: one command runs server + embedded Postgres + Flutter
-  Web with hot reload.
-- Embedded PostgreSQL for dev and test (no Docker needed).
-- Serverpod auth module (`serverpod_auth_idp_*`) scaffolded, unused so far.
-
-## How it was built
-
-See `docs/AI_USAGE.md` for the AI-tool disclosure.
+- Video (under 2 minutes, screen + real phone): TBD.
+- No third-party trademarks or copyrighted music in the app or video.
 
 ## Run and test
 
-See `README.md`. Hosted link: TBD (M0 deploys the skeleton to Serverpod
-Cloud; link goes here once live).
+See `README.md` (run, demo seed, tests, checks, deploy). Quick version:
+
+```sh
+serverpod start            # server + embedded Postgres + web app
+cd queuelock_server && dart test   # 42/42
+```
+
+## Hosted link and credentials
+
+- Link: TBD (deploy via `serverpod cloud launch` / `serverpod cloud deploy`).
+- The app is public; judges can sign up with any email (verification
+  emails are sent by Serverpod Cloud in staging/production). Demo flow:
+  sign in → create queue → add counter → join from `/q/<slug>`.
+- Stays free and unrestricted for judges until 20 Oct 2026.
 
 ## Known limits, stated plainly
 
-- M0 skeleton: no queues, tickets, ledger, or auth flows yet.
-- The ledger will be tamper-evident (not tamper-proof) and will depend on
+- No push notifications when a phone is locked (in-app banner, beep and
+  vibration where the browser allows, instead); no payments; no
+  WhatsApp/SMS; owner-only staff model.
+- The ledger is tamper-evident (not tamper-proof) and depends on
   customers keeping their receipts.
-- No push notifications when a phone is locked, no payments, no
-  WhatsApp/SMS, owner-only staff model (all per spec, to be built in M1–M5).
+- Web-push stretch skipped: no maintained Dart-native server package
+  for Web Push (VAPID + RFC 8291 encryption).
