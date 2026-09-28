@@ -292,16 +292,33 @@ class _Body extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 12),
-        FilledButton(
-          onPressed: busy ? null : onCallNext,
-          style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56)),
-          child: busy
-              ? const SizedBox(
-                  height: 22,
-                  width: 22,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Text('Call next', style: TextStyle(fontSize: 20)),
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: onCallNext == null
+                ? null
+                : [
+                    BoxShadow(
+                      color: AppTheme.rose.withValues(alpha: 0.4),
+                      blurRadius: 18,
+                      spreadRadius: -6,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+          ),
+          child: FilledButton(
+            onPressed: busy ? null : onCallNext,
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(56),
+            ),
+            child: busy
+                ? const SizedBox(
+                    height: 22,
+                    width: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Call next', style: TextStyle(fontSize: 20)),
+          ),
         ).animate(target: busy ? 1 : 0).scaleXY(end: 0.98, duration: 120.ms),
         const Divider(height: 32),
         _TicketSection(

@@ -145,19 +145,29 @@ class _TicketBody extends StatelessWidget {
         const SizedBox(height: 8),
         Center(
           // The number eases to its new value on every change.
-          child: AnimatedSwitcher(
-            duration: 350.ms,
-            switchInCurve: Curves.easeOutBack,
-            transitionBuilder: (child, animation) => ScaleTransition(
-              scale: animation,
-              child: FadeTransition(opacity: animation, child: child),
+            child: AnimatedSwitcher(
+              duration: 350.ms,
+              switchInCurve: Curves.easeOutBack,
+              transitionBuilder: (child, animation) => ScaleTransition(
+                scale: animation,
+                child: FadeTransition(opacity: animation, child: child),
+              ),
+              child: Text(
+                '${view.number}',
+                key: ValueKey(view.number),
+                style: theme.textTheme.displayLarge?.copyWith(
+                  fontSize: 96,
+                  shadows: view.status == TicketStatus.called
+                      ? [
+                          Shadow(
+                            color: AppTheme.rose.withValues(alpha: 0.55),
+                            blurRadius: 28,
+                          ),
+                        ]
+                      : null,
+                ),
+              ),
             ),
-            child: Text(
-              '${view.number}',
-              key: ValueKey(view.number),
-              style: theme.textTheme.displayLarge?.copyWith(fontSize: 96),
-            ),
-          ),
         ),
         const SizedBox(height: 16),
         if (view.status == TicketStatus.called && view.counterName != null)

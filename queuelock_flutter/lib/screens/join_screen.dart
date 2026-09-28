@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:queuelock_client/queuelock_client.dart';
 
 import '../client.dart';
+import '../theme.dart';
 
 /// Public join page at `/q/:slug`: queue info plus nickname entry.
 class JoinScreen extends StatefulWidget {
@@ -111,15 +112,28 @@ class _JoinScreenState extends State<JoinScreen> {
                     onSubmitted: (_) => _join(),
                   ),
                   const SizedBox(height: 12),
-                  FilledButton(
-                    onPressed: open && !_joining ? _join : null,
-                    child: _joining
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Join'),
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(28),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.rose.withValues(alpha: 0.4),
+                          blurRadius: 18,
+                          spreadRadius: -6,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: FilledButton(
+                      onPressed: open && !_joining ? _join : null,
+                      child: _joining
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Join'),
+                    ),
                   )
                       .animate(target: _joining ? 1 : 0)
                       .scaleXY(end: 0.97, duration: 120.ms),
