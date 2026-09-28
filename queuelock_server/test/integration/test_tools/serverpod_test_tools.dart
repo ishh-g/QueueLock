@@ -20,8 +20,11 @@ import 'package:queuelock_server/src/generated/join_receipt.dart' as _ij9t62i8;
 import 'package:queuelock_server/src/generated/ledger_entry.dart' as _iuoxbxw3;
 import 'package:queuelock_server/src/generated/queue.dart' as _ix1t8flb;
 import 'package:queuelock_server/src/generated/queue_info.dart' as _ivuxmrqh;
+import 'package:queuelock_server/src/generated/queue_snapshot.dart'
+    as _ijv57j7m;
 import 'package:queuelock_server/src/generated/queue_status.dart' as _ia69pvbs;
 import 'package:queuelock_server/src/generated/ticket.dart' as _i6avo9gq;
+import 'package:queuelock_server/src/generated/ticket_view.dart' as _ilqm5otp;
 import 'package:queuelock_server/src/generated/verify_result.dart' as _il8a17hy;
 import 'package:serverpod/serverpod.dart' as _is;
 import 'package:serverpod_auth_core_server/serverpod_auth_core_server.dart'
@@ -645,6 +648,36 @@ class _AdminEndpoint {
       }
     });
   }
+
+  _ida.Future<List<_ix1t8flb.Queue>> myQueues(
+    _ist.TestSessionBuilder sessionBuilder,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'admin',
+            method: 'myQueues',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'admin',
+          methodName: 'myQueues',
+          parameters: _ist.testObjectToJson({}),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<List<_ix1t8flb.Queue>>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
 }
 
 class _AuditEndpoint {
@@ -900,6 +933,39 @@ class _CounterEndpoint {
       }
     });
   }
+
+  _ida.Stream<_ijv57j7m.QueueSnapshot> watchQueue(
+    _ist.TestSessionBuilder sessionBuilder,
+    int queueId,
+  ) {
+    var _localTestStreamManager =
+        _ist.TestStreamManager<_ijv57j7m.QueueSnapshot>();
+    _ist.callStreamFunctionAndHandleExceptions(
+      () async {
+        var _localUniqueSession =
+            (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+              endpoint: 'counter',
+              method: 'watchQueue',
+            );
+        var _localCallContext = await _endpointDispatch
+            .getMethodStreamCallContext(
+              createSessionCallback: (_) => _localUniqueSession,
+              endpointPath: 'counter',
+              methodName: 'watchQueue',
+              arguments: {'queueId': queueId},
+              requestedInputStreams: [],
+              serializationManager: _serializationManager,
+            );
+        await _localTestStreamManager.callStreamMethod(
+          _localCallContext,
+          _localUniqueSession,
+          {},
+        );
+      },
+      _localTestStreamManager.outputStreamController,
+    );
+    return _localTestStreamManager.outputStreamController.stream;
+  }
 }
 
 class _QueueEndpoint {
@@ -1007,6 +1073,39 @@ class _QueueEndpoint {
         await _localUniqueSession.close();
       }
     });
+  }
+
+  _ida.Stream<_ilqm5otp.TicketView> watch(
+    _ist.TestSessionBuilder sessionBuilder,
+    String token,
+  ) {
+    var _localTestStreamManager =
+        _ist.TestStreamManager<_ilqm5otp.TicketView>();
+    _ist.callStreamFunctionAndHandleExceptions(
+      () async {
+        var _localUniqueSession =
+            (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+              endpoint: 'queue',
+              method: 'watch',
+            );
+        var _localCallContext = await _endpointDispatch
+            .getMethodStreamCallContext(
+              createSessionCallback: (_) => _localUniqueSession,
+              endpointPath: 'queue',
+              methodName: 'watch',
+              arguments: {'token': token},
+              requestedInputStreams: [],
+              serializationManager: _serializationManager,
+            );
+        await _localTestStreamManager.callStreamMethod(
+          _localCallContext,
+          _localUniqueSession,
+          {},
+        );
+      },
+      _localTestStreamManager.outputStreamController,
+    );
+    return _localTestStreamManager.outputStreamController.stream;
   }
 }
 

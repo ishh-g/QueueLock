@@ -28,3 +28,11 @@ Disclosed per the hackathon rules (AI-tool use must be in the submission text).
   `serving`, `leave` from `called` caught a stale-head bug (chained ledger
   appends reused the pre-append queue row, duplicating `seq`); fixed by
   having `LedgerService.append` return the fresh head row.
+
+## M2 (Sep 28, 2026)
+
+- Same tool. Used for: view models, `ticketView`/`queueSnapshot`
+  builders, post-commit message fan-out, `watch`/`watchQueue` stream
+  endpoints, stream tests, the go_router Flutter app (5 screens).
+- New dependencies: `go_router`, `flutter_web_plugins` (both spec
+  section 4/13: path-URL routing for `/q/:slug` and `/t/:token`).

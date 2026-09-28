@@ -35,4 +35,19 @@ class CounterEndpoint extends Endpoint {
   Future<void> skip(Session session, int ticketId) {
     return QueueService.skip(session, ticketId);
   }
+
+  /// Live queue stream for the counter dashboard. Emits a fresh
+  /// server-computed [QueueSnapshot] immediately and on every change.
+  Stream<QueueSnapshot> watchQueue(Session session, int queueId) async* {
+    final queue = await Queue.db.findById(session, queueId);
+    if (queue == null) throw QueueError(message: 'Queue not found.');
+    QueueService.requireOwner(session, queue);
+    final updates = session.messages.createStream<QueueChanged>(
+      QueueService.channelFor(queueId),
+    );
+    yield await QueueService.queueSnapshot(session, queueId);
+    await for (final _ in updates) {
+      yield await QueueService.queueSnapshot(session, queueId);
+    }
+  }
 }

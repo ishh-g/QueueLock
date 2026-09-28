@@ -1,61 +1,67 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
+import 'package:go_router/go_router.dart';
 
 import 'client.dart';
-import 'screens/greetings_screen.dart';
+import 'screens/dashboard_screen.dart';
+import 'screens/join_screen.dart';
+import 'screens/landing_screen.dart';
+import 'screens/staff_screen.dart';
+import 'screens/ticket_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (kIsWeb) usePathUrlStrategy();
   await initializeClient();
-  runApp(const MyApp());
+  runApp(QueueLockApp());
 }
 
-/// Builds a theme for the given [brightness].
-ThemeData _buildTheme(Brightness brightness) {
-  return ThemeData(
+class QueueLockApp extends StatelessWidget {
+  QueueLockApp({super.key});
+
+  final GoRouter _router = GoRouter(
+    routes: [
+      GoRoute(path: '/', builder: (_, _) => const LandingScreen()),
+      GoRoute(
+        path: '/q/:slug',
+        builder: (_, state) =>
+            JoinScreen(slug: state.pathParameters['slug']!),
+      ),
+      GoRoute(
+        path: '/t/:token',
+        builder: (_, state) =>
+            TicketScreen(token: state.pathParameters['token']!),
+      ),
+      GoRoute(path: '/staff', builder: (_, _) => const StaffScreen()),
+      GoRoute(
+        path: '/staff/:queueId',
+        builder: (_, state) => DashboardScreen(
+          queueId: int.tryParse(state.pathParameters['queueId'] ?? ''),
+        ),
+      ),
+    ],
+    errorBuilder: (_, state) => Scaffold(
+      appBar: AppBar(title: const Text('QueueLock')),
+      body: Center(child: Text('Not found: ${state.uri}')),
+    ),
+  );
+
+  ThemeData _theme(Brightness brightness) => ThemeData(
     colorScheme: ColorScheme.fromSeed(
-      seedColor: Colors.blue,
+      seedColor: Colors.teal,
       brightness: brightness,
     ),
   );
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Serverpod Demo',
-      theme: _buildTheme(Brightness.light),
-      darkTheme: _buildTheme(Brightness.dark),
+    return MaterialApp.router(
+      title: 'QueueLock',
+      theme: _theme(Brightness.light),
+      darkTheme: _theme(Brightness.dark),
       themeMode: ThemeMode.system,
-      home: const MyHomePage(title: 'Serverpod Example'),
-    );
-  }
-}
-
-class MyHomePage extends StatelessWidget {
-  const MyHomePage({super.key, required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: const GreetingsScreen(),
-      // To test authentication in this example app, uncomment the line below
-      // and comment out the line above. This wraps the GreetingsScreen with a
-      // SignInScreen, which automatically shows a sign-in UI when the user is
-      // not authenticated and displays the GreetingsScreen once they sign in.
-      //
-      // body: SignInScreen(
-      //   child: GreetingsScreen(
-      //     onSignOut: () async {
-      //       await client.auth.signOutDevice();
-      //     },
-      //   ),
-      // ),
+      routerConfig: _router,
     );
   }
 }

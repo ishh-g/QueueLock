@@ -28,4 +28,9 @@ class AdminEndpoint extends Endpoint {
   Future<Queue> setStatus(Session session, int queueId, QueueStatus status) {
     return QueueService.setStatus(session, queueId, status);
   }
+
+  /// Queues owned by the signed-in user, oldest first.
+  Future<List<Queue>> myQueues(Session session) {
+    return QueueService.myQueues(session);
+  }
 }

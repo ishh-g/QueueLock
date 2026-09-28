@@ -12,6 +12,7 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:queuelock_client/src/protocol/ledger_entry.dart' as _ioekpgt9;
+import 'package:queuelock_client/src/protocol/queue.dart' as _ikbmde1j;
 import 'package:serverpod_auth_core_client/serverpod_auth_core_client.dart'
     as _iacc;
 import 'package:serverpod_auth_idp_client/serverpod_auth_idp_client.dart'
@@ -23,12 +24,16 @@ import 'join_receipt.dart' as _i8mw49jm;
 import 'ledger_entry.dart' as _ivha9tke;
 import 'ledger_type.dart' as _ilcdwnij;
 import 'queue.dart' as _id7z6zkg;
+import 'queue_changed.dart' as _ikkr9em0;
 import 'queue_error.dart' as _if4uobar;
 import 'queue_info.dart' as _ivuo3aey;
+import 'queue_snapshot.dart' as _izzdfuht;
 import 'queue_status.dart' as _i209jpy3;
 import 'service_sample.dart' as _itt33xw7;
 import 'ticket.dart' as _iw5evp47;
+import 'ticket_public.dart' as _iyr2jrp9;
 import 'ticket_status.dart' as _i6gr5kxf;
+import 'ticket_view.dart' as _iz9n3kug;
 import 'verify_result.dart' as _iowd800h;
 export 'counter.dart';
 export 'greetings/greeting.dart';
@@ -36,12 +41,16 @@ export 'join_receipt.dart';
 export 'ledger_entry.dart';
 export 'ledger_type.dart';
 export 'queue.dart';
+export 'queue_changed.dart';
 export 'queue_error.dart';
 export 'queue_info.dart';
+export 'queue_snapshot.dart';
 export 'queue_status.dart';
 export 'service_sample.dart';
 export 'ticket.dart';
+export 'ticket_public.dart';
 export 'ticket_status.dart';
+export 'ticket_view.dart';
 export 'verify_result.dart';
 export 'client.dart';
 
@@ -97,11 +106,17 @@ class Protocol extends _isc.SerializationManager {
     if (t == _id7z6zkg.Queue) {
       return _id7z6zkg.Queue.fromJson(data) as T;
     }
+    if (t == _ikkr9em0.QueueChanged) {
+      return _ikkr9em0.QueueChanged.fromJson(data) as T;
+    }
     if (t == _if4uobar.QueueError) {
       return _if4uobar.QueueError.fromJson(data) as T;
     }
     if (t == _ivuo3aey.QueueInfo) {
       return _ivuo3aey.QueueInfo.fromJson(data) as T;
+    }
+    if (t == _izzdfuht.QueueSnapshot) {
+      return _izzdfuht.QueueSnapshot.fromJson(data) as T;
     }
     if (t == _i209jpy3.QueueStatus) {
       return _i209jpy3.QueueStatus.fromJson(data) as T;
@@ -112,8 +127,14 @@ class Protocol extends _isc.SerializationManager {
     if (t == _iw5evp47.Ticket) {
       return _iw5evp47.Ticket.fromJson(data) as T;
     }
+    if (t == _iyr2jrp9.TicketPublic) {
+      return _iyr2jrp9.TicketPublic.fromJson(data) as T;
+    }
     if (t == _i6gr5kxf.TicketStatus) {
       return _i6gr5kxf.TicketStatus.fromJson(data) as T;
+    }
+    if (t == _iz9n3kug.TicketView) {
+      return _iz9n3kug.TicketView.fromJson(data) as T;
     }
     if (t == _iowd800h.VerifyResult) {
       return _iowd800h.VerifyResult.fromJson(data) as T;
@@ -136,11 +157,18 @@ class Protocol extends _isc.SerializationManager {
     if (t == _isc.getType<_id7z6zkg.Queue?>()) {
       return (data != null ? _id7z6zkg.Queue.fromJson(data) : null) as T;
     }
+    if (t == _isc.getType<_ikkr9em0.QueueChanged?>()) {
+      return (data != null ? _ikkr9em0.QueueChanged.fromJson(data) : null) as T;
+    }
     if (t == _isc.getType<_if4uobar.QueueError?>()) {
       return (data != null ? _if4uobar.QueueError.fromJson(data) : null) as T;
     }
     if (t == _isc.getType<_ivuo3aey.QueueInfo?>()) {
       return (data != null ? _ivuo3aey.QueueInfo.fromJson(data) : null) as T;
+    }
+    if (t == _isc.getType<_izzdfuht.QueueSnapshot?>()) {
+      return (data != null ? _izzdfuht.QueueSnapshot.fromJson(data) : null)
+          as T;
     }
     if (t == _isc.getType<_i209jpy3.QueueStatus?>()) {
       return (data != null ? _i209jpy3.QueueStatus.fromJson(data) : null) as T;
@@ -152,8 +180,14 @@ class Protocol extends _isc.SerializationManager {
     if (t == _isc.getType<_iw5evp47.Ticket?>()) {
       return (data != null ? _iw5evp47.Ticket.fromJson(data) : null) as T;
     }
+    if (t == _isc.getType<_iyr2jrp9.TicketPublic?>()) {
+      return (data != null ? _iyr2jrp9.TicketPublic.fromJson(data) : null) as T;
+    }
     if (t == _isc.getType<_i6gr5kxf.TicketStatus?>()) {
       return (data != null ? _i6gr5kxf.TicketStatus.fromJson(data) : null) as T;
+    }
+    if (t == _isc.getType<_iz9n3kug.TicketView?>()) {
+      return (data != null ? _iz9n3kug.TicketView.fromJson(data) : null) as T;
     }
     if (t == _isc.getType<_iowd800h.VerifyResult?>()) {
       return (data != null ? _iowd800h.VerifyResult.fromJson(data) : null) as T;
@@ -162,6 +196,16 @@ class Protocol extends _isc.SerializationManager {
       return (data as List)
               .map((e) => deserialize<_i1h51zb1.Counter>(e))
               .toList()
+          as T;
+    }
+    if (t == List<_iyr2jrp9.TicketPublic>) {
+      return (data as List)
+              .map((e) => deserialize<_iyr2jrp9.TicketPublic>(e))
+              .toList()
+          as T;
+    }
+    if (t == List<_ikbmde1j.Queue>) {
+      return (data as List).map((e) => deserialize<_ikbmde1j.Queue>(e)).toList()
           as T;
     }
     if (t == List<_ioekpgt9.LedgerEntry>) {
@@ -187,12 +231,16 @@ class Protocol extends _isc.SerializationManager {
       _ivha9tke.LedgerEntry => 'LedgerEntry',
       _ilcdwnij.LedgerType => 'LedgerType',
       _id7z6zkg.Queue => 'Queue',
+      _ikkr9em0.QueueChanged => 'QueueChanged',
       _if4uobar.QueueError => 'QueueError',
       _ivuo3aey.QueueInfo => 'QueueInfo',
+      _izzdfuht.QueueSnapshot => 'QueueSnapshot',
       _i209jpy3.QueueStatus => 'QueueStatus',
       _itt33xw7.ServiceSample => 'ServiceSample',
       _iw5evp47.Ticket => 'Ticket',
+      _iyr2jrp9.TicketPublic => 'TicketPublic',
       _i6gr5kxf.TicketStatus => 'TicketStatus',
+      _iz9n3kug.TicketView => 'TicketView',
       _iowd800h.VerifyResult => 'VerifyResult',
       _ => null,
     };
@@ -220,18 +268,26 @@ class Protocol extends _isc.SerializationManager {
         return 'LedgerType';
       case _id7z6zkg.Queue():
         return 'Queue';
+      case _ikkr9em0.QueueChanged():
+        return 'QueueChanged';
       case _if4uobar.QueueError():
         return 'QueueError';
       case _ivuo3aey.QueueInfo():
         return 'QueueInfo';
+      case _izzdfuht.QueueSnapshot():
+        return 'QueueSnapshot';
       case _i209jpy3.QueueStatus():
         return 'QueueStatus';
       case _itt33xw7.ServiceSample():
         return 'ServiceSample';
       case _iw5evp47.Ticket():
         return 'Ticket';
+      case _iyr2jrp9.TicketPublic():
+        return 'TicketPublic';
       case _i6gr5kxf.TicketStatus():
         return 'TicketStatus';
+      case _iz9n3kug.TicketView():
+        return 'TicketView';
       case _iowd800h.VerifyResult():
         return 'VerifyResult';
     }
@@ -274,11 +330,17 @@ class Protocol extends _isc.SerializationManager {
     if (dataClassName == 'Queue') {
       return deserialize<_id7z6zkg.Queue>(data['data']);
     }
+    if (dataClassName == 'QueueChanged') {
+      return deserialize<_ikkr9em0.QueueChanged>(data['data']);
+    }
     if (dataClassName == 'QueueError') {
       return deserialize<_if4uobar.QueueError>(data['data']);
     }
     if (dataClassName == 'QueueInfo') {
       return deserialize<_ivuo3aey.QueueInfo>(data['data']);
+    }
+    if (dataClassName == 'QueueSnapshot') {
+      return deserialize<_izzdfuht.QueueSnapshot>(data['data']);
     }
     if (dataClassName == 'QueueStatus') {
       return deserialize<_i209jpy3.QueueStatus>(data['data']);
@@ -289,8 +351,14 @@ class Protocol extends _isc.SerializationManager {
     if (dataClassName == 'Ticket') {
       return deserialize<_iw5evp47.Ticket>(data['data']);
     }
+    if (dataClassName == 'TicketPublic') {
+      return deserialize<_iyr2jrp9.TicketPublic>(data['data']);
+    }
     if (dataClassName == 'TicketStatus') {
       return deserialize<_i6gr5kxf.TicketStatus>(data['data']);
+    }
+    if (dataClassName == 'TicketView') {
+      return deserialize<_iz9n3kug.TicketView>(data['data']);
     }
     if (dataClassName == 'VerifyResult') {
       return deserialize<_iowd800h.VerifyResult>(data['data']);

@@ -19,8 +19,10 @@ import 'package:queuelock_client/src/protocol/join_receipt.dart' as _ibo6j1no;
 import 'package:queuelock_client/src/protocol/ledger_entry.dart' as _ioekpgt9;
 import 'package:queuelock_client/src/protocol/queue.dart' as _ikbmde1j;
 import 'package:queuelock_client/src/protocol/queue_info.dart' as _ialgs5pa;
+import 'package:queuelock_client/src/protocol/queue_snapshot.dart' as _iaj3sqhe;
 import 'package:queuelock_client/src/protocol/queue_status.dart' as _id8crpji;
 import 'package:queuelock_client/src/protocol/ticket.dart' as _ib0v6epf;
+import 'package:queuelock_client/src/protocol/ticket_view.dart' as _ie2orwdm;
 import 'package:queuelock_client/src/protocol/verify_result.dart' as _i15e72h6;
 import 'package:serverpod_auth_core_client/serverpod_auth_core_client.dart'
     as _iacc;
@@ -302,6 +304,14 @@ class EndpointAdmin extends _isc.EndpointRef {
       'status': status,
     },
   );
+
+  /// Queues owned by the signed-in user, oldest first.
+  _ida.Future<List<_ikbmde1j.Queue>> myQueues() =>
+      caller.callServerEndpoint<List<_ikbmde1j.Queue>>(
+        'admin',
+        'myQueues',
+        {},
+      );
 }
 
 /// Public audit endpoints. Anyone can recompute a queue's ledger chain
@@ -399,6 +409,19 @@ class EndpointCounter extends _isc.EndpointRef {
     'skip',
     {'ticketId': ticketId},
   );
+
+  /// Live queue stream for the counter dashboard. Emits a fresh
+  /// server-computed [QueueSnapshot] immediately and on every change.
+  _ida.Stream<_iaj3sqhe.QueueSnapshot> watchQueue(int queueId) =>
+      caller.callStreamingServerEndpoint<
+        _ida.Stream<_iaj3sqhe.QueueSnapshot>,
+        _iaj3sqhe.QueueSnapshot
+      >(
+        'counter',
+        'watchQueue',
+        {'queueId': queueId},
+        {},
+      );
 }
 
 /// Public customer endpoints. No sign-in; customers are identified by
@@ -438,6 +461,20 @@ class EndpointQueue extends _isc.EndpointRef {
         'queue',
         'info',
         {'slug': slug},
+      );
+
+  /// Live ticket stream. Emits a fresh server-computed [TicketView]
+  /// immediately and on every queue change. On reconnect the client
+  /// resubscribes and gets a fresh view.
+  _ida.Stream<_ie2orwdm.TicketView> watch(String token) =>
+      caller.callStreamingServerEndpoint<
+        _ida.Stream<_ie2orwdm.TicketView>,
+        _ie2orwdm.TicketView
+      >(
+        'queue',
+        'watch',
+        {'token': token},
+        {},
       );
 }
 

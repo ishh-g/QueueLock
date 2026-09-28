@@ -22,6 +22,21 @@ tamper-evident ledger lets anyone audit the run.
 - Proven: 50 concurrent joins gap-free; 2×20 concurrent calls exactly
   once; chain verifies, tamper located at exact seq; non-owner rejected.
 
+## Features (M2: realtime + screens done)
+
+- `queue.watch(token)` → live `TicketView` (number, status, position,
+  called counter + seconds to arrive, fairness receipt); `counter
+  .watchQueue(queueId)` → live `QueueSnapshot` (waiting/called/serving,
+  counters, avg service time). Post-commit fan-out on per-queue channels;
+  streams recompute views from the DB, messages carry no state.
+- Flutter Web with path URLs: `/` landing, `/q/:slug` join, `/t/:token`
+  live ticket (called banner with countdown, receipt panel, leave),
+  `/staff` sign-in + queue list + create, `/staff/:queueId` counter
+  dashboard (pick counter, call next, start/complete/skip, status
+  switch, live lists). ETA shows a placeholder until the M3 estimator.
+- Proven: stream tests (subscribe → mutate → fresh view, no polling);
+  `flutter build web` succeeds.
+
 ## How Serverpod is used (M0)
 
 - `serverpod create` scaffold: `queuelock_server`, generated

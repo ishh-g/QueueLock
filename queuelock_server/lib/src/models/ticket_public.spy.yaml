@@ -1,0 +1,10 @@
+### Staff-facing ticket row. Never carries the token hash.
+class: TicketPublic
+fields:
+  id: int
+  number: int
+  nickname: String?
+  status: TicketStatus
+  counterName: String?
+  calledAt: DateTime?
+  servingAt: DateTime?
