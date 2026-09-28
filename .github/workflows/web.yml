@@ -1,0 +1,62 @@
+# Web app to GitHub Pages
+#
+# Builds the Flutter web app with the production API URL baked in and
+# publishes it to GitHub Pages. The API + Postgres live on Render
+# (see docs/RENDER.md); the static frontend never sleeps there.
+#
+# One-time setup in the GitHub repo:
+#   1. Settings -> Pages -> Source: "GitHub Actions".
+#   2. Settings -> Secrets and variables -> Actions -> Variables tab:
+#        API_URL    = https://<render-api-service>.onrender.com
+#        PAGES_BASE = /<repo-name>     (e.g. /queuelock, leading slash)
+name: Web
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'queuelock_flutter/**'
+      - 'queuelock_client/**'
+      - '.github/workflows/web.yml'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.4'
+          channel: stable
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        working-directory: queuelock_flutter
+        run: flutter analyze
+
+      - name: Build web
+        working-directory: queuelock_flutter
+        run: >
+          flutter build web --release
+          --dart-define=SERVER_URL=${{ vars.API_URL }}
+          --base-href ${{ vars.PAGES_BASE }}/
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: queuelock_flutter/build/web
+
+      - name: Deploy to Pages
+        uses: actions/deploy-pages@v4

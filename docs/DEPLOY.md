@@ -1,8 +1,10 @@
-# Deploy to Serverpod Cloud (M6)
+# Deploy (M6)
 
-Cloud hosts both the backend and the Flutter web app (managed Postgres,
-TLS, secrets, logs). First project includes a one-month free trial, no
-credit card. The free window covers judging (until 20 Oct 2026).
+Primary plan: **Render (API + Postgres) + GitHub Pages (web app)** —
+$0, full functionality including future calls. See `docs/RENDER.md`
+for the exact runbook. Serverpod Cloud's Starter trial disables future
+calls, so Cloud would need the paid Growth plan; it stays the fallback
+if hosting money appears.
 
 ## One-time setup (do this now)
 
