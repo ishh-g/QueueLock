@@ -1,0 +1,9 @@
+### One observed service duration, used by the wait-time estimator.
+class: ServiceSample
+table: service_sample
+fields:
+  queueId: int, relation(parent=queue)
+  counterId: int?
+  hourOfDay: int
+  durationSec: double
+  createdAt: DateTime, default=now

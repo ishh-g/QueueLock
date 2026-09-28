@@ -12,3 +12,15 @@ Disclosed per the hackathon rules (AI-tool use must be in the submission text).
   as `AGENTS.md` instructs.
 - All generated code was produced by `serverpod create` / `serverpod
   generate`, not hand-written by the AI. No application logic exists yet.
+
+## M1 (Sep 28, 2026)
+
+- Same tool. Used for: `.spy.yaml` models, `QueueService` (critical
+  section), `LedgerService` (hash chain), `TicketTokens`, thin endpoints,
+  integration + unit tests.
+- Concurrency tests use `withServerpod` with `rollbackDatabase.disabled`
+  (each group gets its own embedded-Postgres database) instead of a
+  hand-started server + raw generated client: same real-transaction
+  semantics, hermetic on CI. Documented in the test file header.
+- New dependency: `crypto` (spec section 7 mandates it for the ledger
+  hash).

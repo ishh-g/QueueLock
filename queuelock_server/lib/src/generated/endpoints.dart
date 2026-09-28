@@ -10,6 +10,7 @@
 // ignore_for_file: invalid_use_of_internal_member
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
+import 'package:queuelock_server/src/generated/queue_status.dart' as _ia69pvbs;
 import 'package:serverpod/serverpod.dart' as _is;
 import 'package:serverpod_auth_core_server/serverpod_auth_core_server.dart'
     as _iacs;
@@ -17,6 +18,10 @@ import 'package:serverpod_auth_idp_server/serverpod_auth_idp_server.dart'
     as _iais;
 import '../auth/email_idp_endpoint.dart' as _iuc1hd5t;
 import '../auth/jwt_refresh_endpoint.dart' as _inwq3ztq;
+import '../endpoints/admin_endpoint.dart' as _i5t1w2d2;
+import '../endpoints/audit_endpoint.dart' as _irhfmlkv;
+import '../endpoints/counter_endpoint.dart' as _iavqe5qy;
+import '../endpoints/queue_endpoint.dart' as _iu1irfsk;
 import '../greetings/greeting_endpoint.dart' as _il624ik7;
 
 class Endpoints extends _is.EndpointDispatch {
@@ -33,6 +38,30 @@ class Endpoints extends _is.EndpointDispatch {
         ..initialize(
           server,
           'jwtRefresh',
+          null,
+        ),
+      'admin': _i5t1w2d2.AdminEndpoint()
+        ..initialize(
+          server,
+          'admin',
+          null,
+        ),
+      'audit': _irhfmlkv.AuditEndpoint()
+        ..initialize(
+          server,
+          'audit',
+          null,
+        ),
+      'counter': _iavqe5qy.CounterEndpoint()
+        ..initialize(
+          server,
+          'counter',
+          null,
+        ),
+      'queue': _iu1irfsk.QueueEndpoint()
+        ..initialize(
+          server,
+          'queue',
           null,
         ),
       'greeting': _il624ik7.GreetingEndpoint()
@@ -245,6 +274,326 @@ class Endpoints extends _is.EndpointDispatch {
                         session,
                         refreshToken: params['refreshToken'],
                       ),
+        ),
+      },
+    );
+    connectors['admin'] = _is.EndpointConnector(
+      name: 'admin',
+      endpoint: endpoints['admin']!,
+      methodConnectors: {
+        'createQueue': _is.MethodConnector(
+          name: 'createQueue',
+          params: {
+            'name': _is.ParameterDescription(
+              name: 'name',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'callTimeoutSec': _is.ParameterDescription(
+              name: 'callTimeoutSec',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['admin'] as _i5t1w2d2.AdminEndpoint).createQueue(
+                    session,
+                    params['name'],
+                    callTimeoutSec: params['callTimeoutSec'],
+                  ),
+        ),
+        'addCounter': _is.MethodConnector(
+          name: 'addCounter',
+          params: {
+            'queueId': _is.ParameterDescription(
+              name: 'queueId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'name': _is.ParameterDescription(
+              name: 'name',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['admin'] as _i5t1w2d2.AdminEndpoint).addCounter(
+                    session,
+                    params['queueId'],
+                    params['name'],
+                  ),
+        ),
+        'setStatus': _is.MethodConnector(
+          name: 'setStatus',
+          params: {
+            'queueId': _is.ParameterDescription(
+              name: 'queueId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'status': _is.ParameterDescription(
+              name: 'status',
+              type: _is.getType<_ia69pvbs.QueueStatus>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['admin'] as _i5t1w2d2.AdminEndpoint).setStatus(
+                    session,
+                    params['queueId'],
+                    params['status'],
+                  ),
+        ),
+      },
+    );
+    connectors['audit'] = _is.EndpointConnector(
+      name: 'audit',
+      endpoint: endpoints['audit']!,
+      methodConnectors: {
+        'ledger': _is.MethodConnector(
+          name: 'ledger',
+          params: {
+            'slug': _is.ParameterDescription(
+              name: 'slug',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'afterSeq': _is.ParameterDescription(
+              name: 'afterSeq',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'limit': _is.ParameterDescription(
+              name: 'limit',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['audit'] as _irhfmlkv.AuditEndpoint).ledger(
+                session,
+                params['slug'],
+                afterSeq: params['afterSeq'],
+                limit: params['limit'],
+              ),
+        ),
+        'verify': _is.MethodConnector(
+          name: 'verify',
+          params: {
+            'slug': _is.ParameterDescription(
+              name: 'slug',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['audit'] as _irhfmlkv.AuditEndpoint).verify(
+                session,
+                params['slug'],
+              ),
+        ),
+        'checkReceipt': _is.MethodConnector(
+          name: 'checkReceipt',
+          params: {
+            'slug': _is.ParameterDescription(
+              name: 'slug',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'seq': _is.ParameterDescription(
+              name: 'seq',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'hash': _is.ParameterDescription(
+              name: 'hash',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['audit'] as _irhfmlkv.AuditEndpoint).checkReceipt(
+                    session,
+                    params['slug'],
+                    params['seq'],
+                    params['hash'],
+                  ),
+        ),
+      },
+    );
+    connectors['counter'] = _is.EndpointConnector(
+      name: 'counter',
+      endpoint: endpoints['counter']!,
+      methodConnectors: {
+        'callNext': _is.MethodConnector(
+          name: 'callNext',
+          params: {
+            'counterId': _is.ParameterDescription(
+              name: 'counterId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['counter'] as _iavqe5qy.CounterEndpoint).callNext(
+                    session,
+                    params['counterId'],
+                  ),
+        ),
+        'startServing': _is.MethodConnector(
+          name: 'startServing',
+          params: {
+            'ticketId': _is.ParameterDescription(
+              name: 'ticketId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['counter'] as _iavqe5qy.CounterEndpoint)
+                  .startServing(
+                    session,
+                    params['ticketId'],
+                  ),
+        ),
+        'complete': _is.MethodConnector(
+          name: 'complete',
+          params: {
+            'ticketId': _is.ParameterDescription(
+              name: 'ticketId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'callNext': _is.ParameterDescription(
+              name: 'callNext',
+              type: _is.getType<bool>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['counter'] as _iavqe5qy.CounterEndpoint).complete(
+                    session,
+                    params['ticketId'],
+                    callNext: params['callNext'],
+                  ),
+        ),
+        'skip': _is.MethodConnector(
+          name: 'skip',
+          params: {
+            'ticketId': _is.ParameterDescription(
+              name: 'ticketId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['counter'] as _iavqe5qy.CounterEndpoint).skip(
+                    session,
+                    params['ticketId'],
+                  ),
+        ),
+      },
+    );
+    connectors['queue'] = _is.EndpointConnector(
+      name: 'queue',
+      endpoint: endpoints['queue']!,
+      methodConnectors: {
+        'join': _is.MethodConnector(
+          name: 'join',
+          params: {
+            'slug': _is.ParameterDescription(
+              name: 'slug',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'nickname': _is.ParameterDescription(
+              name: 'nickname',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['queue'] as _iu1irfsk.QueueEndpoint).join(
+                session,
+                params['slug'],
+                params['nickname'],
+              ),
+        ),
+        'leave': _is.MethodConnector(
+          name: 'leave',
+          params: {
+            'token': _is.ParameterDescription(
+              name: 'token',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['queue'] as _iu1irfsk.QueueEndpoint).leave(
+                session,
+                params['token'],
+              ),
+        ),
+        'info': _is.MethodConnector(
+          name: 'info',
+          params: {
+            'slug': _is.ParameterDescription(
+              name: 'slug',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['queue'] as _iu1irfsk.QueueEndpoint).info(
+                session,
+                params['slug'],
+              ),
         ),
       },
     );

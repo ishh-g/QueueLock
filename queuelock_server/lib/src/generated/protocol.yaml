@@ -9,5 +9,22 @@ emailIdp:
   - hasAccount:
 jwtRefresh:
   - refreshAccessToken:
+admin:
+  - createQueue:
+  - addCounter:
+  - setStatus:
+audit:
+  - ledger:
+  - verify:
+  - checkReceipt:
+counter:
+  - callNext:
+  - startServing:
+  - complete:
+  - skip:
+queue:
+  - join:
+  - leave:
+  - info:
 greeting:
   - hello:

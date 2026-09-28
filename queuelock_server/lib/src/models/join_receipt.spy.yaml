@@ -1,0 +1,7 @@
+### Receipt handed to a customer on join. The token is shown once.
+class: JoinReceipt
+fields:
+  number: int
+  token: String
+  joinSeq: int
+  joinHash: String

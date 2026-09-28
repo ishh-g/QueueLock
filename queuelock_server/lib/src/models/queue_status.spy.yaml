@@ -1,0 +1,6 @@
+### Queue lifecycle status.
+enum: QueueStatus
+values:
+  - open
+  - paused
+  - closed

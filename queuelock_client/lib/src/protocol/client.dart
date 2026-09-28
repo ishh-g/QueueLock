@@ -12,8 +12,16 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'dart:async' as _ida;
 import 'package:http/http.dart' as _i85jenna;
+import 'package:queuelock_client/src/protocol/counter.dart' as _is6j3804;
 import 'package:queuelock_client/src/protocol/greetings/greeting.dart'
     as _ie3edy0j;
+import 'package:queuelock_client/src/protocol/join_receipt.dart' as _ibo6j1no;
+import 'package:queuelock_client/src/protocol/ledger_entry.dart' as _ioekpgt9;
+import 'package:queuelock_client/src/protocol/queue.dart' as _ikbmde1j;
+import 'package:queuelock_client/src/protocol/queue_info.dart' as _ialgs5pa;
+import 'package:queuelock_client/src/protocol/queue_status.dart' as _id8crpji;
+import 'package:queuelock_client/src/protocol/ticket.dart' as _ib0v6epf;
+import 'package:queuelock_client/src/protocol/verify_result.dart' as _i15e72h6;
 import 'package:serverpod_auth_core_client/serverpod_auth_core_client.dart'
     as _iacc;
 import 'package:serverpod_auth_idp_client/serverpod_auth_idp_client.dart'
@@ -246,6 +254,193 @@ class EndpointJwtRefresh extends _iacc.EndpointRefreshJwtTokens {
       );
 }
 
+/// Staff admin endpoints. MVP: owner-only; every call checks that the
+/// signed-in user owns the queue.
+/// {@category Endpoint}
+class EndpointAdmin extends _isc.EndpointRef {
+  EndpointAdmin(_isc.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'admin';
+
+  /// Creates a queue owned by the signed-in user. [callTimeoutSec] is the
+  /// per-queue "come to the counter" grace period (minimum 10 seconds).
+  _ida.Future<_ikbmde1j.Queue> createQueue(
+    String name, {
+    required int callTimeoutSec,
+  }) => caller.callServerEndpoint<_ikbmde1j.Queue>(
+    'admin',
+    'createQueue',
+    {
+      'name': name,
+      'callTimeoutSec': callTimeoutSec,
+    },
+  );
+
+  /// Adds a named counter to [queueId].
+  _ida.Future<_is6j3804.Counter> addCounter(
+    int queueId,
+    String name,
+  ) => caller.callServerEndpoint<_is6j3804.Counter>(
+    'admin',
+    'addCounter',
+    {
+      'queueId': queueId,
+      'name': name,
+    },
+  );
+
+  /// Opens, pauses or closes [queueId].
+  _ida.Future<_ikbmde1j.Queue> setStatus(
+    int queueId,
+    _id8crpji.QueueStatus status,
+  ) => caller.callServerEndpoint<_ikbmde1j.Queue>(
+    'admin',
+    'setStatus',
+    {
+      'queueId': queueId,
+      'status': status,
+    },
+  );
+}
+
+/// Public audit endpoints. Anyone can recompute a queue's ledger chain
+/// and check a receipt against it.
+/// {@category Endpoint}
+class EndpointAudit extends _isc.EndpointRef {
+  EndpointAudit(_isc.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'audit';
+
+  /// Ledger page after [afterSeq], up to [limit] entries (clamped 1-200).
+  _ida.Future<List<_ioekpgt9.LedgerEntry>> ledger(
+    String slug, {
+    required int afterSeq,
+    required int limit,
+  }) => caller.callServerEndpoint<List<_ioekpgt9.LedgerEntry>>(
+    'audit',
+    'ledger',
+    {
+      'slug': slug,
+      'afterSeq': afterSeq,
+      'limit': limit,
+    },
+  );
+
+  /// Recomputes the whole chain. `firstBadSeq` locates tampering exactly.
+  _ida.Future<_i15e72h6.VerifyResult> verify(String slug) =>
+      caller.callServerEndpoint<_i15e72h6.VerifyResult>(
+        'audit',
+        'verify',
+        {'slug': slug},
+      );
+
+  /// Checks a customer-held `(seq, hash)` receipt against the chain.
+  _ida.Future<bool> checkReceipt(
+    String slug,
+    int seq,
+    String hash,
+  ) => caller.callServerEndpoint<bool>(
+    'audit',
+    'checkReceipt',
+    {
+      'slug': slug,
+      'seq': seq,
+      'hash': hash,
+    },
+  );
+}
+
+/// Staff counter endpoints. The signed-in user must own the queue; the
+/// owner can sign in on several devices and each device picks a counter.
+/// {@category Endpoint}
+class EndpointCounter extends _isc.EndpointRef {
+  EndpointCounter(_isc.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'counter';
+
+  /// Calls the longest-waiting ticket to [counterId]. Returns the called
+  /// ticket, or null when nobody is waiting.
+  _ida.Future<_ib0v6epf.Ticket?> callNext(int counterId) =>
+      caller.callServerEndpoint<_ib0v6epf.Ticket?>(
+        'counter',
+        'callNext',
+        {'counterId': counterId},
+      );
+
+  /// Moves a called ticket into service.
+  _ida.Future<_ib0v6epf.Ticket> startServing(int ticketId) =>
+      caller.callServerEndpoint<_ib0v6epf.Ticket>(
+        'counter',
+        'startServing',
+        {'ticketId': ticketId},
+      );
+
+  /// Completes a serving ticket. With [callNext], the same counter
+  /// immediately calls the next waiting ticket, which is returned
+  /// (or null when nobody is waiting).
+  _ida.Future<_ib0v6epf.Ticket?> complete(
+    int ticketId, {
+    required bool callNext,
+  }) => caller.callServerEndpoint<_ib0v6epf.Ticket?>(
+    'counter',
+    'complete',
+    {
+      'ticketId': ticketId,
+      'callNext': callNext,
+    },
+  );
+
+  /// Takes a called (or serving) ticket out of the flow.
+  _ida.Future<void> skip(int ticketId) => caller.callServerEndpoint<void>(
+    'counter',
+    'skip',
+    {'ticketId': ticketId},
+  );
+}
+
+/// Public customer endpoints. No sign-in; customers are identified by
+/// ticket tokens. Thin: input validation lives here, rules in
+/// [QueueService].
+/// {@category Endpoint}
+class EndpointQueue extends _isc.EndpointRef {
+  EndpointQueue(_isc.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'queue';
+
+  /// Joins the open queue [slug] with [nickname]. Returns the receipt;
+  /// the token is shown to the customer exactly once.
+  _ida.Future<_ibo6j1no.JoinReceipt> join(
+    String slug,
+    String nickname,
+  ) => caller.callServerEndpoint<_ibo6j1no.JoinReceipt>(
+    'queue',
+    'join',
+    {
+      'slug': slug,
+      'nickname': nickname,
+    },
+  );
+
+  /// Cancels the ticket identified by [token].
+  _ida.Future<void> leave(String token) => caller.callServerEndpoint<void>(
+    'queue',
+    'leave',
+    {'token': token},
+  );
+
+  /// Public queue view: row, waiting count, counters.
+  _ida.Future<_ialgs5pa.QueueInfo> info(String slug) =>
+      caller.callServerEndpoint<_ialgs5pa.QueueInfo>(
+        'queue',
+        'info',
+        {'slug': slug},
+      );
+}
+
 /// This is an example endpoint that returns a greeting message through
 /// its [hello] method.
 /// {@category Endpoint}
@@ -304,6 +499,10 @@ class Client extends _isc.ServerpodClientShared {
        ) {
     emailIdp = EndpointEmailIdp(this);
     jwtRefresh = EndpointJwtRefresh(this);
+    admin = EndpointAdmin(this);
+    audit = EndpointAudit(this);
+    counter = EndpointCounter(this);
+    queue = EndpointQueue(this);
     greeting = EndpointGreeting(this);
     modules = Modules(this);
   }
@@ -311,6 +510,14 @@ class Client extends _isc.ServerpodClientShared {
   late final EndpointEmailIdp emailIdp;
 
   late final EndpointJwtRefresh jwtRefresh;
+
+  late final EndpointAdmin admin;
+
+  late final EndpointAudit audit;
+
+  late final EndpointCounter counter;
+
+  late final EndpointQueue queue;
 
   late final EndpointGreeting greeting;
 
@@ -320,6 +527,10 @@ class Client extends _isc.ServerpodClientShared {
   Map<String, _isc.EndpointRef> get endpointRefLookup => {
     'emailIdp': emailIdp,
     'jwtRefresh': jwtRefresh,
+    'admin': admin,
+    'audit': audit,
+    'counter': counter,
+    'queue': queue,
     'greeting': greeting,
   };
 

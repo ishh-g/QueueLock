@@ -1,0 +1,14 @@
+### A virtual queue owned by one staff user.
+class: Queue
+table: queue
+fields:
+  slug: String, unique
+  name: String
+  status: QueueStatus
+  callTimeoutSec: int, default=180
+  lastNumber: int, default=0
+  headSeq: int, default=0
+  headHash: String, default='0000000000000000000000000000000000000000000000000000000000000000'
+  avgServiceSec: double, default=300.0
+  sampleCount: int, default=0
+  ownerId: UuidValue
