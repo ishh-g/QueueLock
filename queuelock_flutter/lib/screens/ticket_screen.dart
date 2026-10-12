@@ -6,9 +6,8 @@ import 'package:queuelock_client/queuelock_client.dart';
 
 import '../call_alert.dart';
 import '../client.dart';
+import '../widgets/dotted_trail.dart';
 
-/// Live customer ticket page at `/t/:token`. Renders the server-computed
-/// [TicketView] stream; reconnects resubscribe automatically.
 class TicketScreen extends StatefulWidget {
   final String token;
   const TicketScreen({super.key, required this.token});
@@ -46,50 +45,56 @@ class _TicketScreenState extends State<TicketScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Your ticket')),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 560),
-          child: StreamBuilder<TicketView>(
-            stream: _stream,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting &&
-                  !snapshot.hasData) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (snapshot.hasError) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text('Could not load your ticket.'),
-                        const SizedBox(height: 12),
-                        OutlinedButton(
-                          onPressed: () => context.go('/t/${widget.token}'),
-                          child: const Text('Retry'),
-                        ),
-                      ],
+      appBar: AppBar(
+        title: const Text('Your ticket'),
+        backgroundColor: DottedTrail.trail,
+        foregroundColor: Colors.white,
+      ),
+      body: DottedTrail(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: StreamBuilder<TicketView>(
+              stream: _stream,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting &&
+                    !snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('Could not load your ticket.'),
+                          const SizedBox(height: 12),
+                          OutlinedButton(
+                            onPressed: () => context.go('/t/${widget.token}'),
+                            child: const Text('Retry'),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                  );
+                }
+                final view = snapshot.data!;
+                final reconnecting =
+                    snapshot.connectionState == ConnectionState.waiting;
+                if (view.status == TicketStatus.called &&
+                    _lastStatus != TicketStatus.called) {
+                  alertOnCalled();
+                }
+                _lastStatus = view.status;
+                return _TicketBody(
+                  view: view,
+                  reconnecting: reconnecting,
+                  leaving: _leaving,
+                  onLeave: () => _leave(view.queueSlug),
                 );
-              }
-              final view = snapshot.data!;
-              final reconnecting =
-                  snapshot.connectionState == ConnectionState.waiting;
-              if (view.status == TicketStatus.called &&
-                  _lastStatus != TicketStatus.called) {
-                alertOnCalled();
-              }
-              _lastStatus = view.status;
-              return _TicketBody(
-                view: view,
-                reconnecting: reconnecting,
-                leaving: _leaving,
-                onLeave: () => _leave(view.queueSlug),
-              );
-            },
+              },
+            ),
           ),
         ),
       ),
@@ -232,8 +237,7 @@ class _CalledBannerState extends State<_CalledBanner> {
     final colors = Theme.of(context).colorScheme;
     final remaining = widget.arriveInSec == null
         ? null
-        : widget.arriveInSec! -
-              DateTime.now().difference(_shownAt).inSeconds;
+        : widget.arriveInSec! - DateTime.now().difference(_shownAt).inSeconds;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -245,9 +249,12 @@ class _CalledBannerState extends State<_CalledBanner> {
         children: [
           Text(
             'Go to Counter ${widget.counterName}',
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(color: colors.onPrimaryContainer),
+            style:
+                Theme.of(
+                  context,
+                ).textTheme.headlineSmall?.copyWith(
+                  color: colors.onPrimaryContainer,
+                ),
           ),
           const SizedBox(height: 8),
           Text(

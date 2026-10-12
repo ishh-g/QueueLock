@@ -1,11 +1,3 @@
-// M1 concurrency proof.
-//
-// These tests run against a real booted server (test run mode, embedded
-// PostgreSQL) with `rollbackDatabase: disabled`, so every endpoint call
-// runs in its own real transaction. `Future.wait` fires the calls
-// concurrently; the `FOR UPDATE` queue lock in `QueueService.withQueueLock`
-// is what serialises them. Each `withServerpod` group gets its own
-// database, so committed rows never leak between groups.
 import 'package:queuelock_server/src/generated/protocol.dart';
 import 'package:test/test.dart';
 
@@ -43,7 +35,6 @@ void main() {
           final numbers = receipts.map((r) => r.number).toList()..sort();
           expect(numbers, List.generate(50, (i) => i + 1));
 
-          // Every receipt checks out against the chain.
           for (final receipt in receipts) {
             expect(
               await endpoints.audit.checkReceipt(
@@ -61,7 +52,7 @@ void main() {
             queue.slug,
           );
           expect(result.ok, isTrue);
-          expect(result.entryCount, 51); // queue_opened + 50 joined
+          expect(result.entryCount, 51);
         },
       );
 
@@ -103,12 +94,10 @@ void main() {
           final numbers = called.map((t) => t.number).toList()..sort();
           expect(numbers, List.generate(40, (i) => i + 1));
 
-          // No ticket hash ever leaves the server, even to staff.
           for (final t in called) {
             expect(t.tokenHash, isEmpty);
           }
 
-          // Queue is drained: the next call finds nobody waiting.
           expect(
             await endpoints.counter.callNext(owner, counterA.id!),
             isNull,

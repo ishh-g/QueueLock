@@ -31,9 +31,6 @@ import 'package:serverpod_auth_idp_client/serverpod_auth_idp_client.dart'
 import 'package:serverpod_client/serverpod_client.dart' as _isc;
 import 'protocol.dart' as _il2as5qe;
 
-/// By extending [EmailIdpBaseEndpoint], the email identity provider endpoints
-/// are made available on the server and enable the corresponding sign-in widget
-/// on the client.
 /// {@category Endpoint}
 class EndpointEmailIdp extends _iaic.EndpointEmailIdpBase {
   EndpointEmailIdp(_isc.EndpointCaller caller) : super(caller);
@@ -214,8 +211,6 @@ class EndpointEmailIdp extends _iaic.EndpointEmailIdpBase {
   );
 }
 
-/// By extending [RefreshJwtTokensEndpoint], the JWT token refresh endpoint
-/// is made available on the server and enables automatic token refresh on the client.
 /// {@category Endpoint}
 class EndpointJwtRefresh extends _iacc.EndpointRefreshJwtTokens {
   EndpointJwtRefresh(_isc.EndpointCaller caller) : super(caller);
@@ -256,8 +251,6 @@ class EndpointJwtRefresh extends _iacc.EndpointRefreshJwtTokens {
       );
 }
 
-/// Staff admin endpoints. MVP: owner-only; every call checks that the
-/// signed-in user owns the queue.
 /// {@category Endpoint}
 class EndpointAdmin extends _isc.EndpointRef {
   EndpointAdmin(_isc.EndpointCaller caller) : super(caller);
@@ -265,8 +258,6 @@ class EndpointAdmin extends _isc.EndpointRef {
   @override
   String get name => 'admin';
 
-  /// Creates a queue owned by the signed-in user. [callTimeoutSec] is the
-  /// per-queue "come to the counter" grace period (minimum 10 seconds).
   _ida.Future<_ikbmde1j.Queue> createQueue(
     String name, {
     required int callTimeoutSec,
@@ -279,7 +270,6 @@ class EndpointAdmin extends _isc.EndpointRef {
     },
   );
 
-  /// Adds a named counter to [queueId].
   _ida.Future<_is6j3804.Counter> addCounter(
     int queueId,
     String name,
@@ -292,7 +282,6 @@ class EndpointAdmin extends _isc.EndpointRef {
     },
   );
 
-  /// Opens, pauses or closes [queueId].
   _ida.Future<_ikbmde1j.Queue> setStatus(
     int queueId,
     _id8crpji.QueueStatus status,
@@ -305,7 +294,6 @@ class EndpointAdmin extends _isc.EndpointRef {
     },
   );
 
-  /// Queues owned by the signed-in user, oldest first.
   _ida.Future<List<_ikbmde1j.Queue>> myQueues() =>
       caller.callServerEndpoint<List<_ikbmde1j.Queue>>(
         'admin',
@@ -314,8 +302,6 @@ class EndpointAdmin extends _isc.EndpointRef {
       );
 }
 
-/// Public audit endpoints. Anyone can recompute a queue's ledger chain
-/// and check a receipt against it.
 /// {@category Endpoint}
 class EndpointAudit extends _isc.EndpointRef {
   EndpointAudit(_isc.EndpointCaller caller) : super(caller);
@@ -323,7 +309,6 @@ class EndpointAudit extends _isc.EndpointRef {
   @override
   String get name => 'audit';
 
-  /// Ledger page after [afterSeq], up to [limit] entries (clamped 1-200).
   _ida.Future<List<_ioekpgt9.LedgerEntry>> ledger(
     String slug, {
     required int afterSeq,
@@ -338,7 +323,6 @@ class EndpointAudit extends _isc.EndpointRef {
     },
   );
 
-  /// Recomputes the whole chain. `firstBadSeq` locates tampering exactly.
   _ida.Future<_i15e72h6.VerifyResult> verify(String slug) =>
       caller.callServerEndpoint<_i15e72h6.VerifyResult>(
         'audit',
@@ -346,7 +330,6 @@ class EndpointAudit extends _isc.EndpointRef {
         {'slug': slug},
       );
 
-  /// Checks a customer-held `(seq, hash)` receipt against the chain.
   _ida.Future<bool> checkReceipt(
     String slug,
     int seq,
@@ -362,8 +345,6 @@ class EndpointAudit extends _isc.EndpointRef {
   );
 }
 
-/// Staff counter endpoints. The signed-in user must own the queue; the
-/// owner can sign in on several devices and each device picks a counter.
 /// {@category Endpoint}
 class EndpointCounter extends _isc.EndpointRef {
   EndpointCounter(_isc.EndpointCaller caller) : super(caller);
@@ -371,8 +352,6 @@ class EndpointCounter extends _isc.EndpointRef {
   @override
   String get name => 'counter';
 
-  /// Calls the longest-waiting ticket to [counterId]. Returns the called
-  /// ticket, or null when nobody is waiting.
   _ida.Future<_ib0v6epf.Ticket?> callNext(int counterId) =>
       caller.callServerEndpoint<_ib0v6epf.Ticket?>(
         'counter',
@@ -380,7 +359,6 @@ class EndpointCounter extends _isc.EndpointRef {
         {'counterId': counterId},
       );
 
-  /// Moves a called ticket into service.
   _ida.Future<_ib0v6epf.Ticket> startServing(int ticketId) =>
       caller.callServerEndpoint<_ib0v6epf.Ticket>(
         'counter',
@@ -388,9 +366,6 @@ class EndpointCounter extends _isc.EndpointRef {
         {'ticketId': ticketId},
       );
 
-  /// Completes a serving ticket. With [callNext], the same counter
-  /// immediately calls the next waiting ticket, which is returned
-  /// (or null when nobody is waiting).
   _ida.Future<_ib0v6epf.Ticket?> complete(
     int ticketId, {
     required bool callNext,
@@ -403,15 +378,12 @@ class EndpointCounter extends _isc.EndpointRef {
     },
   );
 
-  /// Takes a called (or serving) ticket out of the flow.
   _ida.Future<void> skip(int ticketId) => caller.callServerEndpoint<void>(
     'counter',
     'skip',
     {'ticketId': ticketId},
   );
 
-  /// Live queue stream for the counter dashboard. Emits a fresh
-  /// server-computed [QueueSnapshot] immediately and on every change.
   _ida.Stream<_iaj3sqhe.QueueSnapshot> watchQueue(int queueId) =>
       caller.callStreamingServerEndpoint<
         _ida.Stream<_iaj3sqhe.QueueSnapshot>,
@@ -424,9 +396,6 @@ class EndpointCounter extends _isc.EndpointRef {
       );
 }
 
-/// Public customer endpoints. No sign-in; customers are identified by
-/// ticket tokens. Thin: input validation lives here, rules in
-/// [QueueService].
 /// {@category Endpoint}
 class EndpointQueue extends _isc.EndpointRef {
   EndpointQueue(_isc.EndpointCaller caller) : super(caller);
@@ -434,8 +403,6 @@ class EndpointQueue extends _isc.EndpointRef {
   @override
   String get name => 'queue';
 
-  /// Joins the open queue [slug] with [nickname]. Returns the receipt;
-  /// the token is shown to the customer exactly once.
   _ida.Future<_ibo6j1no.JoinReceipt> join(
     String slug,
     String nickname,
@@ -448,14 +415,12 @@ class EndpointQueue extends _isc.EndpointRef {
     },
   );
 
-  /// Cancels the ticket identified by [token].
   _ida.Future<void> leave(String token) => caller.callServerEndpoint<void>(
     'queue',
     'leave',
     {'token': token},
   );
 
-  /// Public queue view: row, waiting count, counters.
   _ida.Future<_ialgs5pa.QueueInfo> info(String slug) =>
       caller.callServerEndpoint<_ialgs5pa.QueueInfo>(
         'queue',
@@ -463,9 +428,6 @@ class EndpointQueue extends _isc.EndpointRef {
         {'slug': slug},
       );
 
-  /// Live ticket stream. Emits a fresh server-computed [TicketView]
-  /// immediately and on every queue change. On reconnect the client
-  /// resubscribes and gets a fresh view.
   _ida.Stream<_ie2orwdm.TicketView> watch(String token) =>
       caller.callStreamingServerEndpoint<
         _ida.Stream<_ie2orwdm.TicketView>,
@@ -478,8 +440,6 @@ class EndpointQueue extends _isc.EndpointRef {
       );
 }
 
-/// This is an example endpoint that returns a greeting message through
-/// its [hello] method.
 /// {@category Endpoint}
 class EndpointGreeting extends _isc.EndpointRef {
   EndpointGreeting(_isc.EndpointCaller caller) : super(caller);
@@ -487,7 +447,6 @@ class EndpointGreeting extends _isc.EndpointRef {
   @override
   String get name => 'greeting';
 
-  /// Returns a personalized greeting message: "Hello {name}".
   _ida.Future<_ie3edy0j.Greeting> hello(String name) =>
       caller.callServerEndpoint<_ie3edy0j.Greeting>(
         'greeting',

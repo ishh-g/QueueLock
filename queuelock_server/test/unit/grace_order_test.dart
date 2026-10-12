@@ -24,8 +24,6 @@ void main() {
     });
 
     test('then repeated re-insertions stay ordered without colliding', () {
-      // First miss behind [1, 2, 3]: key 4. Second miss for another
-      // ticket behind [1, 2, 3, 4]: key 3.5, strictly inside (3, 4).
       final first = QueueService.reinsertOrderKey([1, 2, 3], 9);
       final keys = [1.0, 2.0, 3.0, first]..sort();
       final second = QueueService.reinsertOrderKey(keys, 10);

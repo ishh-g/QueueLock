@@ -3,8 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:queuelock_client/queuelock_client.dart';
 
 import '../client.dart';
+import '../widgets/dotted_trail.dart';
 
-/// Public join page at `/q/:slug`: queue info plus nickname entry.
 class JoinScreen extends StatefulWidget {
   final String slug;
   const JoinScreen({super.key, required this.slug});
@@ -52,81 +52,87 @@ class _JoinScreenState extends State<JoinScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Join queue')),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 560),
-          child: FutureBuilder<QueueInfo>(
-            future: _info,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (snapshot.hasError) {
-                return _StateMessage(
-                  message: 'Could not load this queue.',
-                  onRetry: () => setState(
-                    () => _info = client.queue.info(widget.slug),
-                  ),
-                );
-              }
-              final info = snapshot.data!;
-              final open = info.queue.status == QueueStatus.open;
-              return ListView(
-                padding: const EdgeInsets.all(24),
-                children: [
-                  Text(
-                    info.queue.name,
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    open
-                        ? '${info.waitingCount} waiting'
-                        : 'This queue is not open right now.',
-                  ),
-                  const SizedBox(height: 24),
-                  TextField(
-                    controller: _nickname,
-                    enabled: open && !_joining,
-                    maxLength: 24,
-                    decoration: const InputDecoration(
-                      labelText: 'Nickname',
-                      hintText: 'First name is enough',
-                      border: OutlineInputBorder(),
+      appBar: AppBar(
+        title: const Text('Join queue'),
+        backgroundColor: DottedTrail.trail,
+        foregroundColor: Colors.white,
+      ),
+      body: DottedTrail(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: FutureBuilder<QueueInfo>(
+              future: _info,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return _StateMessage(
+                    message: 'Could not load this queue.',
+                    onRetry: () => setState(
+                      () => _info = client.queue.info(widget.slug),
                     ),
-                    onSubmitted: (_) => _join(),
-                  ),
-                  const SizedBox(height: 12),
-                  FilledButton(
-                    onPressed: open && !_joining ? _join : null,
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size.fromHeight(52),
-                    ),
-                    child: _joining
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Join'),
-                  ),
-                  if (_error != null) ...[
-                    const SizedBox(height: 12),
+                  );
+                }
+                final info = snapshot.data!;
+                final open = info.queue.status == QueueStatus.open;
+                return ListView(
+                  padding: const EdgeInsets.all(24),
+                  children: [
                     Text(
-                      _error!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
+                      info.queue.name,
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      open
+                          ? '${info.waitingCount} waiting'
+                          : 'This queue is not open right now.',
+                    ),
+                    const SizedBox(height: 24),
+                    TextField(
+                      controller: _nickname,
+                      enabled: open && !_joining,
+                      maxLength: 24,
+                      decoration: const InputDecoration(
+                        labelText: 'Nickname',
+                        hintText: 'First name is enough',
+                        border: OutlineInputBorder(),
                       ),
+                      onSubmitted: (_) => _join(),
+                    ),
+                    const SizedBox(height: 12),
+                    FilledButton(
+                      onPressed: open && !_joining ? _join : null,
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size.fromHeight(52),
+                      ),
+                      child: _joining
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Join'),
+                    ),
+                    if (_error != null) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        _error!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Data-minimised: only a nickname, nothing else.',
                     ),
                   ],
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Data-minimised: only a nickname, nothing else.',
-                  ),
-                ],
-              );
-            },
+                );
+              },
+            ),
           ),
         ),
       ),

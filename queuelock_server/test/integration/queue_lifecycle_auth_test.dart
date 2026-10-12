@@ -1,6 +1,3 @@
-// M1 lifecycle + ownership proof: every transition in the ticket
-// lifecycle, invalid transitions rejected, and staff calls from a
-// non-owner rejected. Public endpoints reject invalid tokens.
 import 'package:queuelock_server/src/generated/protocol.dart';
 import 'package:test/test.dart';
 
@@ -76,7 +73,6 @@ void main() {
           info = await endpoints.queue.info(sessionBuilder, queue.slug);
           expect(info.waitingCount, 0);
 
-          // Terminal transitions reject repeats.
           await expectLater(
             endpoints.counter.complete(owner, serving.id!, callNext: false),
             throwsA(isA<QueueError>()),

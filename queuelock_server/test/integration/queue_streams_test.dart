@@ -1,6 +1,3 @@
-// M2 realtime proof: open streams emit fresh server-computed views as
-// state changes, with no polling. Same real-server setup as the other
-// integration groups (own database, real transactions).
 import 'package:queuelock_server/src/generated/protocol.dart';
 import 'package:test/test.dart';
 

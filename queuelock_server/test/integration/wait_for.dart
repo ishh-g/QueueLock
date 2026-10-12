@@ -1,4 +1,3 @@
-// Polling helper shared by integration tests (not a test itself).
 import 'dart:async';
 
 Future<void> waitForCondition(

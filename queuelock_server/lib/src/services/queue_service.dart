@@ -9,31 +9,15 @@ import 'estimator.dart';
 import 'ledger_service.dart';
 import 'ticket_tokens.dart';
 
-/// All queue state changes run through here.
-///
-/// The server is the only authority: ticket numbers, positions, ordering
-/// and the ledger are computed and enforced here, never on the client.
-/// Every operation in [QueueService] runs inside
-/// [withQueueLock], except read-only views ([info], [ledger],
-/// [verifyQueue], [checkReceipt]).
-///
-/// Counter provisioning ([addCounter]) is transactional and serialised but
-/// appends no ledger entry: the ledger vocabulary (section 7 of the spec)
-/// covers customer-visible ticket flow, and counter setup is not part of
-/// it.
 class QueueService {
-  /// Maximum waiting tickets per queue.
   static const int waitingCap = 500;
 
-  /// Bounds for the per-queue call timeout setting.
+  static const int maxJoinsPerMinute = 10;
+  static const Duration rateLimitWindow = Duration(minutes: 1);
+
   static const int minCallTimeoutSec = 10;
   static const int maxCallTimeoutSec = 86400;
 
-  /// The critical section: one database transaction that loads the [Queue]
-  /// row `FOR UPDATE`, serialising all operations (and therefore the ledger
-  /// chain) on one queue. The ledger append happens inside the same
-  /// transaction. Realtime fan-out and FutureCall scheduling (M2/M3) happen
-  /// after commit only, never in here.
   static Future<T> withQueueLock<T>(
     Session session,
     int queueId,
@@ -54,7 +38,6 @@ class QueueService {
     });
   }
 
-  /// Throws unless the signed-in user owns [queue].
   static void requireOwner(Session session, Queue queue) {
     final caller = session.authenticated?.authUserId;
     if (caller == null || caller != queue.ownerId) {
@@ -62,8 +45,6 @@ class QueueService {
     }
   }
 
-  /// Data-minimised nicknames: trimmed, control characters removed, at most
-  /// 24 characters. Pure so it is unit-testable.
   static String sanitizeNickname(String raw) {
     final cleaned = raw.trim().replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '');
     final truncated = String.fromCharCodes(cleaned.runes.take(24));
@@ -90,7 +71,6 @@ class QueueService {
     ).join();
   }
 
-  /// Creates a queue owned by the signed-in user and opens its ledger.
   static Future<Queue> createQueue(
     Session session,
     String name,
@@ -149,15 +129,12 @@ class QueueService {
       } on QueueError catch (e) {
         if (e.message != 'Slug taken, retry.') rethrow;
       } catch (_) {
-        // Unique-index race on slug: retry with a fresh suffix.
         if (attempt == 7) rethrow;
       }
     }
     throw QueueError(message: 'Could not pick a queue slug, try again.');
   }
 
-  /// Adds a counter. Transactional and serialised; no ledger entry (see
-  /// class docs for why).
   static Future<Counter> addCounter(
     Session session,
     int queueId,
@@ -183,7 +160,6 @@ class QueueService {
     return counter;
   }
 
-  /// Opens, pauses or closes a queue, with a ledger entry.
   static Future<Queue> setStatus(
     Session session,
     int queueId,
@@ -227,17 +203,19 @@ class QueueService {
     return result;
   }
 
-  /// Joins the open queue with [slug]. Returns the receipt; the token inside
-  /// is the only time the customer ever sees it.
   static Future<JoinReceipt> join(
     Session session,
     String slug,
-    String nickname,
-  ) {
+    String nickname, {
+    String? remoteIp,
+  }) {
     final clean = sanitizeNickname(nickname);
     return _withQueueLockBySlug(session, slug, (session, tx, queue) async {
       if (queue.status != QueueStatus.open) {
         throw QueueError(message: 'This queue is not open right now.');
+      }
+      if (remoteIp != null) {
+        await _enforceJoinRateLimit(session, tx, queue.id!, remoteIp);
       }
       final waiting = await Ticket.db.count(
         session,
@@ -283,8 +261,6 @@ class QueueService {
     });
   }
 
-  /// Cancels the ticket identified by [token]. Only waiting or called
-  /// tickets can leave; anything else is an error.
   static Future<void> leave(Session session, String token) async {
     final ticket = await Ticket.db.findFirstRow(
       session,
@@ -320,9 +296,6 @@ class QueueService {
     await notifyChanged(session, ticket.queueId);
   }
 
-  /// Calls the longest-waiting ticket to [counterId]. Returns the called
-  /// ticket, or null when nobody is waiting. The row lock makes concurrent
-  /// counters race-free: each ticket is called exactly once.
   static Future<Ticket?> callNext(Session session, int counterId) async {
     var timeoutSec = minCallTimeoutSec;
     final called = await _withCounterLock(session, counterId, (
@@ -361,7 +334,6 @@ class QueueService {
       return _redacted(called);
     });
     if (called != null) {
-      // After commit only: arm this call's timeout.
       await scheduleTimeout(
         session,
         ticketId: called.id!,
@@ -372,8 +344,6 @@ class QueueService {
     return called;
   }
 
-  /// Moves a called ticket into service. Only staff move tickets here; a
-  /// called customer is never auto-confirmed.
   static Future<Ticket> startServing(Session session, int ticketId) {
     return _withTicketLock(session, ticketId, (
       session,
@@ -404,9 +374,6 @@ class QueueService {
     });
   }
 
-  /// Completes a serving ticket. With [callNext], the same counter
-  /// immediately calls the next waiting ticket; the newly called ticket
-  /// (or null) is returned.
   static Future<Ticket?> complete(
     Session session,
     int ticketId, {
@@ -431,7 +398,6 @@ class QueueService {
         ),
         transaction: tx,
       );
-      // Learn from this real service time, in the same transaction.
       var queueForAppend = queue;
       final servingAt = ticket.servingAt;
       final doneAt = updated.doneAt!;
@@ -491,7 +457,6 @@ class QueueService {
     return next;
   }
 
-  /// Takes a called (or serving) ticket out of the flow. Terminal.
   static Future<void> skip(Session session, int ticketId) {
     return _withTicketLock(session, ticketId, (
       session,
@@ -519,7 +484,6 @@ class QueueService {
     });
   }
 
-  /// Public queue view: row, waiting count, counters. Read-only.
   static Future<QueueInfo> info(Session session, String slug) async {
     final queue = await _queueBySlug(session, slug);
     final waiting = await Ticket.db.count(
@@ -535,7 +499,6 @@ class QueueService {
     return QueueInfo(queue: queue, waitingCount: waiting, counters: counters);
   }
 
-  /// Public ledger page. [limit] is clamped to 1-200 entries.
   static Future<List<LedgerEntry>> ledger(
     Session session,
     String slug,
@@ -551,7 +514,6 @@ class QueueService {
     );
   }
 
-  /// Recomputes the whole chain for public audit.
   static Future<VerifyResult> verifyQueue(Session session, String slug) async {
     final queue = await _queueBySlug(session, slug);
     final result = await LedgerService.verify(session, queue.id!);
@@ -562,7 +524,6 @@ class QueueService {
     );
   }
 
-  /// Checks a customer-held receipt against the chain.
   static Future<bool> checkReceipt(
     Session session,
     String slug,
@@ -577,14 +538,8 @@ class QueueService {
     return entry != null && entry.hash == hash;
   }
 
-  // -- realtime views -----------------------------------------------------
-
-  /// Channel carrying "queue changed" pings for one queue. Messages carry
-  /// no state; every open stream recomputes its own view from the database.
   static String channelFor(int queueId) => 'queue_$queueId';
 
-  /// Publishes a change ping. Call only after the transaction commits,
-  /// never inside it.
   static Future<void> notifyChanged(Session session, int queueId) async {
     await session.messages.postMessage(
       channelFor(queueId),
@@ -592,7 +547,6 @@ class QueueService {
     );
   }
 
-  /// Queues owned by the signed-in user, oldest first.
   static Future<List<Queue>> myQueues(Session session) async {
     final caller = session.authenticated?.authUserId;
     if (caller == null) {
@@ -605,7 +559,6 @@ class QueueService {
     );
   }
 
-  /// Queue id behind [token]. Throws when the token is unknown.
   static Future<int> queueIdForToken(Session session, String token) async {
     final ticket = await Ticket.db.findFirstRow(
       session,
@@ -615,8 +568,6 @@ class QueueService {
     return ticket.queueId;
   }
 
-  /// Live customer-facing view of the ticket behind [token].
-  /// `etaSeconds` stays null until the M3 estimator lands.
   static Future<TicketView> ticketView(Session session, String token) async {
     final ticket = await Ticket.db.findFirstRow(
       session,
@@ -702,7 +653,6 @@ class QueueService {
     );
   }
 
-  /// Live staff-facing snapshot of [queueId].
   static Future<QueueSnapshot> queueSnapshot(
     Session session,
     int queueId,
@@ -750,15 +700,49 @@ class QueueService {
     );
   }
 
-  // -- timeouts, sweeper, retention ---------------------------------------
+  static Future<void> _enforceJoinRateLimit(
+    Session session,
+    Transaction transaction,
+    int queueId,
+    String remoteIp,
+  ) async {
+    final nowMs = DateTime.now().toUtc().millisecondsSinceEpoch;
+    final cutoff = nowMs - rateLimitWindow.inMilliseconds;
+    final ipHash = TicketTokens.tokenHashFor(remoteIp);
+    final recent = await JoinRateLimitHit.db.count(
+      session,
+      where: (t) =>
+          t.queueId.equals(queueId) &
+          t.ipHash.equals(ipHash) &
+          (t.tsMs > cutoff),
+      transaction: transaction,
+    );
+    if (recent >= maxJoinsPerMinute) {
+      throw QueueError(
+        message: 'Too many joins from this device, try again in a minute.',
+      );
+    }
+    await JoinRateLimitHit.db.insertRow(
+      session,
+      JoinRateLimitHit(queueId: queueId, ipHash: ipHash, tsMs: nowMs),
+      transaction: transaction,
+    );
+  }
 
-  /// Identifier of the single recurring sweeper chain.
+  static Future<void> pruneRateLimitHits(Session session) async {
+    final cutoff =
+        DateTime.now().toUtc().millisecondsSinceEpoch -
+        rateLimitWindow.inMilliseconds;
+    await JoinRateLimitHit.db.deleteWhere(
+      session,
+      where: (t) => (t.tsMs < cutoff),
+    );
+  }
+
   static const String sweeperIdentifier = 'queuelock-sweeper';
 
-  /// Per-process guard so the sweeper chain is ensured once.
   static bool _sweeperEnsured = false;
 
-  /// Schedules the per-ticket timeout call. Must run after commit only.
   static Future<void> scheduleTimeout(
     Session session, {
     required int ticketId,
@@ -772,10 +756,6 @@ class QueueService {
         .timeoutTicket(ticketId, callId);
   }
 
-  /// Ensures exactly one recurring sweeper chain exists. Cancel-then-
-  /// schedule also clears chains orphaned by a crash, and the sweeper
-  /// body itself is idempotent, so overlap is harmless. (Single-process
-  /// MVP: a multi-instance deployment would need a stronger guard.)
   static Future<void> ensureSweeper(Session session) async {
     if (_sweeperEnsured) return;
     _sweeperEnsured = true;
@@ -787,9 +767,6 @@ class QueueService {
         .sweep();
   }
 
-  /// Grace re-insertion: the orderKey placing a ticket after the next 3
-  /// waiting tickets. [sortedKeys] must be sorted ascending and must not
-  /// contain the re-entering ticket itself. Pure and unit-tested.
   static double reinsertOrderKey(
     List<double> sortedKeys,
     double fallbackNumber,
@@ -806,10 +783,6 @@ class QueueService {
     return fallbackNumber;
   }
 
-  /// Applies one call timeout. Idempotent: acts only when the ticket is
-  /// still `called` with the same [callId] and its grace period has
-  /// actually passed; anything else is a no-op. Returns true when state
-  /// changed (and watchers were notified).
   static Future<bool> applyCallTimeout(
     Session session,
     int ticketId,
@@ -832,7 +805,6 @@ class QueueService {
       final elapsed = DateTime.now().toUtc().difference(current.calledAt!);
       if (elapsed.inSeconds < queue.callTimeoutSec) return;
       if (current.reentries >= 1) {
-        // Second miss: out of the queue.
         await Ticket.db.updateRow(
           session,
           current.copyWith(status: TicketStatus.skipped),
@@ -847,7 +819,6 @@ class QueueService {
           counterId: current.counterId,
         );
       } else {
-        // First miss: back to waiting, three tickets ahead of it.
         final waitingKeys = (await Ticket.db.find(
           session,
           where: (t) =>
@@ -884,9 +855,6 @@ class QueueService {
     return changed;
   }
 
-  /// Sweeper body: applies every expired called timeout through the same
-  /// idempotent path as the scheduled call, so it only recovers work the
-  /// per-ticket call missed (e.g. crash between commit and scheduling).
   static Future<void> sweepCalledTimeouts(Session session) async {
     final now = DateTime.now().toUtc();
     final called = await Ticket.db.find(
@@ -903,9 +871,6 @@ class QueueService {
     }
   }
 
-  /// Data minimisation: forgets nicknames older than 24 hours. The ledger
-  /// never stores nicknames, so the chain is unaffected. Returns how many
-  /// nicknames were purged.
   static Future<int> purgeOldNicknames(Session session) async {
     final cutoff = DateTime.now().toUtc().subtract(
       const Duration(hours: 24),
@@ -926,9 +891,6 @@ class QueueService {
     return purged;
   }
 
-  // -- internals ----------------------------------------------------------
-
-  /// Token hashes must never leave the server.
   static Ticket _redacted(Ticket ticket) => ticket.copyWith(tokenHash: '');
 
   static Future<Queue> _queueBySlug(Session session, String slug) async {
@@ -948,7 +910,6 @@ class QueueService {
   ) async {
     final queue = await _queueBySlug(session, slug);
     final result = await withQueueLock(session, queue.id!, operation);
-    // Fan-out after commit: watchers recompute their own views.
     await notifyChanged(session, queue.id!);
     return result;
   }

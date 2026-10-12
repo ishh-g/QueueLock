@@ -3,10 +3,9 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:queuelock_client/queuelock_client.dart';
 
 import '../client.dart';
+import '../widgets/dotted_trail.dart';
 import 'sign_in_screen.dart';
 
-/// Counter dashboard at `/staff/:queueId`: pick a counter, call next,
-/// serve the current ticket, watch the waiting list live.
 class DashboardScreen extends StatelessWidget {
   final int? queueId;
   const DashboardScreen({super.key, required this.queueId});
@@ -15,12 +14,20 @@ class DashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     if (queueId == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Counter')),
+        appBar: AppBar(
+          title: const Text('Counter'),
+          backgroundColor: DottedTrail.trail,
+          foregroundColor: Colors.white,
+        ),
         body: const Center(child: Text('Invalid queue id.')),
       );
     }
     return Scaffold(
-      appBar: AppBar(title: const Text('Counter')),
+      appBar: AppBar(
+        title: const Text('Counter'),
+        backgroundColor: DottedTrail.trail,
+        foregroundColor: Colors.white,
+      ),
       body: SignInScreen(child: _Dashboard(queueId: queueId!)),
     );
   }
@@ -74,67 +81,67 @@ class _DashboardState extends State<_Dashboard> {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 720),
-        child: StreamBuilder<QueueSnapshot>(
-          stream: _stream,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting &&
-                !snapshot.hasData) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (snapshot.hasError) {
-              return Center(
-                child: Text('Could not load queue: ${snapshot.error}'),
-              );
-            }
-            final snap = snapshot.data!;
-            final reconnecting =
-                snapshot.connectionState == ConnectionState.waiting;
-            if (_counterId != null &&
-                snap.counters.every((c) => c.id != _counterId)) {
-              _counterId = null;
-            }
-            _counterId ??= snap.counters.isNotEmpty
-                ? snap.counters.first.id
-                : null;
-            return _Body(
-              snap: snap,
-              reconnecting: reconnecting,
-              busy: _busy,
-              counterId: _counterId,
-              newCounter: _newCounter,
-              onPickCounter: (id) => setState(() => _counterId = id),
-              onCallNext: _counterId == null
-                  ? null
-                  : () => _run(
-                      () async => client.counter.callNext(_counterId!),
-                    ),
-              onStartServing: (id) => _run(
-                () async => client.counter.startServing(id),
-              ),
-              onComplete: (id) => _run(
-                () async =>
-                    client.counter.complete(id, callNext: false),
-              ),
-              onCompleteAndNext: (id) => _run(
-                () async => client.counter.complete(id, callNext: true),
-              ),
-              onSkip: (id) => _run(() async => client.counter.skip(id)),
-              onAddCounter: () => _run(() async {
-                await client.admin.addCounter(
-                  widget.queueId,
-                  _newCounter.text,
+    return DottedTrail(
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720),
+          child: StreamBuilder<QueueSnapshot>(
+            stream: _stream,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting &&
+                  !snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                return Center(
+                  child: Text('Could not load queue: ${snapshot.error}'),
                 );
-                _newCounter.clear();
-              }),
-              onSetStatus: (status) => _run(
-                () async =>
-                    client.admin.setStatus(widget.queueId, status),
-              ),
-            );
-          },
+              }
+              final snap = snapshot.data!;
+              final reconnecting =
+                  snapshot.connectionState == ConnectionState.waiting;
+              if (_counterId != null &&
+                  snap.counters.every((c) => c.id != _counterId)) {
+                _counterId = null;
+              }
+              _counterId ??= snap.counters.isNotEmpty
+                  ? snap.counters.first.id
+                  : null;
+              return _Body(
+                snap: snap,
+                reconnecting: reconnecting,
+                busy: _busy,
+                counterId: _counterId,
+                newCounter: _newCounter,
+                onPickCounter: (id) => setState(() => _counterId = id),
+                onCallNext: _counterId == null
+                    ? null
+                    : () => _run(
+                        () async => client.counter.callNext(_counterId!),
+                      ),
+                onStartServing: (id) => _run(
+                  () async => client.counter.startServing(id),
+                ),
+                onComplete: (id) => _run(
+                  () async => client.counter.complete(id, callNext: false),
+                ),
+                onCompleteAndNext: (id) => _run(
+                  () async => client.counter.complete(id, callNext: true),
+                ),
+                onSkip: (id) => _run(() async => client.counter.skip(id)),
+                onAddCounter: () => _run(() async {
+                  await client.admin.addCounter(
+                    widget.queueId,
+                    _newCounter.text,
+                  );
+                  _newCounter.clear();
+                }),
+                onSetStatus: (status) => _run(
+                  () async => client.admin.setStatus(widget.queueId, status),
+                ),
+              );
+            },
+          ),
         ),
       ),
     );
@@ -278,8 +285,6 @@ class _Body extends StatelessWidget {
   }
 }
 
-/// QR code of the public join link. Print it or show it at the venue:
-/// customers scan it with any phone camera, no app install.
 class _JoinQr extends StatelessWidget {
   final String slug;
   const _JoinQr({required this.slug});
@@ -288,6 +293,7 @@ class _JoinQr extends StatelessWidget {
   Widget build(BuildContext context) {
     final url = '${Uri.base.origin}/q/$slug';
     return Card(
+      color: Colors.white,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
@@ -300,10 +306,15 @@ class _JoinQr extends StatelessWidget {
                 children: [
                   Text(
                     'Customer join link',
-                    style: Theme.of(context).textTheme.titleMedium,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Colors.black87,
+                    ),
                   ),
                   const SizedBox(height: 4),
-                  SelectableText(url),
+                  SelectableText(
+                    url,
+                    style: const TextStyle(color: Colors.black87),
+                  ),
                 ],
               ),
             ),
@@ -345,7 +356,9 @@ class _TicketSection extends StatelessWidget {
             child: ListTile(
               title: Text('#${t.number} ${t.nickname ?? ''}'.trim()),
               subtitle: Text(
-                t.counterName == null ? t.status.name : '${t.status.name} · ${t.counterName}',
+                t.counterName == null
+                    ? t.status.name
+                    : '${t.status.name} · ${t.counterName}',
               ),
               trailing: Wrap(
                 spacing: 4,

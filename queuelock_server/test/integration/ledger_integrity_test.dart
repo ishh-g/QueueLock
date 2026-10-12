@@ -1,6 +1,3 @@
-// M1 ledger proof: the chain verifies, tampering is located exactly,
-// and customer receipts check out. Own group (own database) because the
-// tamper test commits a corrupted row on purpose.
 import 'package:queuelock_server/src/generated/protocol.dart';
 import 'package:test/test.dart';
 
@@ -46,7 +43,6 @@ void main() {
           await endpoints.counter.startServing(owner, called.id!);
           await endpoints.counter.complete(owner, called.id!, callNext: false);
 
-          // queue_opened + 3 joined + called + serving_started + completed
           final result = await endpoints.audit.verify(
             sessionBuilder,
             queue.slug,
@@ -76,7 +72,6 @@ void main() {
             isFalse,
           );
 
-          // The ledger page shows the same entries in order.
           final page = await endpoints.audit.ledger(
             sessionBuilder,
             queue.slug,

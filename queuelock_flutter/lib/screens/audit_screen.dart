@@ -2,13 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:queuelock_client/queuelock_client.dart';
 
 import '../client.dart';
+import '../widgets/dotted_trail.dart';
 
 const _pageSize = 50;
 
-/// Public audit page at `/audit/:slug`: chain status, entry list, and a
-/// "check my receipt" box. Everything here is public and tamper-evident:
-///
-/// customers keep `(seq, hash)` receipts and anyone can recompute the chain.
 class AuditScreen extends StatefulWidget {
   final String slug;
   const AuditScreen({super.key, required this.slug});
@@ -96,63 +93,69 @@ class _AuditScreenState extends State<AuditScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Queue audit')),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              _StatusCard(verify: _verify),
-              const SizedBox(height: 16),
-              _ReceiptBox(
-                seq: _seq,
-                hash: _hash,
-                checking: _checking,
-                match: _match,
-                onCheck: _check,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Log entries (${_entries.length})',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              if (_listError != null) ...[
-                const SizedBox(height: 8),
+      appBar: AppBar(
+        title: const Text('Queue audit'),
+        backgroundColor: DottedTrail.trail,
+        foregroundColor: Colors.white,
+      ),
+      body: DottedTrail(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                _StatusCard(verify: _verify),
+                const SizedBox(height: 16),
+                _ReceiptBox(
+                  seq: _seq,
+                  hash: _hash,
+                  checking: _checking,
+                  match: _match,
+                  onCheck: _check,
+                ),
+                const SizedBox(height: 16),
                 Text(
-                  _listError!,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.error,
-                  ),
+                  'Log entries (${_entries.length})',
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
-                OutlinedButton(
-                  onPressed: _loadMore,
-                  child: const Text('Retry'),
-                ),
-              ],
-              for (final entry in _entries) _EntryRow(entry: entry),
-              if (_entries.isEmpty && !_loadingMore && _listError == null)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  child: Text('No entries yet.'),
-                ),
-              if (_loadingMore)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-              if (_hasMore && !_loadingMore)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: OutlinedButton(
-                    onPressed: _loadMore,
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(48),
+                if (_listError != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    _listError!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
                     ),
-                    child: const Text('Load more'),
                   ),
-                ),
-            ],
+                  OutlinedButton(
+                    onPressed: _loadMore,
+                    child: const Text('Retry'),
+                  ),
+                ],
+                for (final entry in _entries) _EntryRow(entry: entry),
+                if (_entries.isEmpty && !_loadingMore && _listError == null)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Text('No entries yet.'),
+                  ),
+                if (_loadingMore)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                if (_hasMore && !_loadingMore)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: OutlinedButton(
+                      onPressed: _loadMore,
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
+                      ),
+                      child: const Text('Load more'),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),

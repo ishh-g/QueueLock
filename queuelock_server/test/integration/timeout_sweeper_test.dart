@@ -1,11 +1,3 @@
-// M3 timeout proof.
-//
-// Spec section 14 test 4 asks for `callTimeoutSec = 1`, but section 6 sets
-// a minimum of 10 (enforced by createQueue), so these tests use the
-// minimum: a real 10-second expiry for the first miss, and backdated
-// `calledAt` rows (same handler code path) for the rest. The scheduled
-// per-ticket future call fires the real expiry; the sweeper shares the
-// same idempotent `applyCallTimeout` path.
 import 'package:queuelock_server/src/generated/protocol.dart';
 import 'package:queuelock_server/src/services/queue_service.dart';
 import 'package:test/test.dart';
@@ -57,10 +49,6 @@ void main() {
           ))!;
           expect(called.number, 1);
 
-          // The timeout call was scheduled after commit (the test server
-          // does not execute future calls, so expiry below is reached
-          // with a genuinely-expired row through the sweeper and the
-          // handler — the same code the scheduled call runs).
           final session = sessionBuilder.build();
           final scheduled = await session.db.unsafeQuery(
             "SELECT name, \"serializedObject\" FROM serverpod_future_call "
@@ -73,7 +61,6 @@ void main() {
             isTrue,
           );
 
-          // Genuinely expired: called 15 s ago against a 10 s timeout.
           final stored = (await Ticket.db.findById(session, called.id!))!;
           await Ticket.db.updateRow(
             session,
@@ -130,7 +117,6 @@ void main() {
             ),
           );
 
-          // First miss for ticket 1 (backdated, same handler path).
           var first = (await endpoints.counter.callNext(
             owner,
             counter.id!,
@@ -151,7 +137,6 @@ void main() {
             isTrue,
           );
 
-          // Move tickets 2-4 out of the way so ticket 1 is callable again.
           for (var i = 0; i < 3; i++) {
             final next = (await endpoints.counter.callNext(
               owner,
@@ -166,7 +151,6 @@ void main() {
           expect(recalled.number, 1);
           expect(recalled.callId, 2);
 
-          // Second miss, backdated the same way.
           session = sessionBuilder.build();
           stored = (await Ticket.db.findById(session, recalled.id!))!;
           await Ticket.db.updateRow(
@@ -208,7 +192,6 @@ void main() {
             isTrue,
           );
 
-          // Re-running the handler changes nothing.
           final countBefore = entries.length;
           expect(
             await QueueService.applyCallTimeout(session, recalled.id!, 2),

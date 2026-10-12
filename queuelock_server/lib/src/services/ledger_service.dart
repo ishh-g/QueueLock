@@ -5,26 +5,10 @@ import 'package:serverpod/serverpod.dart';
 
 import '../generated/protocol.dart';
 
-/// Appends entries to a queue's tamper-evident ledger.
-///
-/// Must only be called from inside [QueueService.withQueueLock], on the
-/// locked [Queue] row, using the same transaction. The caller updates no
-/// ledger state itself; [append] increments `headSeq`, computes the hash
-/// chain link and persists the updated head on the queue row atomically
-/// with the state change.
-///
-/// Hash (SHA-256 hex, `crypto` package):
-/// `sha256("$queueId|$seq|$type|ticket| counter|detail|$tsMs|$prevHash")`
-/// with `-` for absent optional fields. The genesis `prevHash` is 64 zeros.
-/// `tsMs` is hashed as the stored integer, never as a round-tripped
-/// `DateTime`.
 class LedgerService {
-  /// Genesis link: 64 zeros.
   static const String genesisPrevHash =
       '0000000000000000000000000000000000000000000000000000000000000000';
 
-  /// Pure hash computation, so the chain rule is unit-testable and shared
-  /// by [append] and audit verification.
   static String hashFor({
     required int queueId,
     required int seq,
@@ -41,9 +25,6 @@ class LedgerService {
     return sha256.convert(utf8.encode(input)).toString();
   }
 
-  /// Appends one entry and advances the queue head. Returns the entry
-  /// together with the queue row carrying the new head, so chained
-  /// appends in the same transaction never reuse a stale `headSeq`.
   static Future<({LedgerEntry entry, Queue queue})> append(
     Session session,
     Transaction transaction,
@@ -92,9 +73,6 @@ class LedgerService {
     return (entry: entry, queue: updatedQueue);
   }
 
-  /// Recomputes the whole chain for [queueId]. Returns `(ok, firstBadSeq)`.
-  /// A bad link at `seq` also breaks every later link; the first one is
-  /// reported so tampering is located exactly.
   static Future<({bool ok, int? firstBadSeq, int entryCount})> verify(
     Session session,
     int queueId, {

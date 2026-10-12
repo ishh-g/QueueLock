@@ -26,8 +26,7 @@ class QueueLockApp extends StatelessWidget {
       GoRoute(path: '/', builder: (_, _) => const LandingScreen()),
       GoRoute(
         path: '/q/:slug',
-        builder: (_, state) =>
-            JoinScreen(slug: state.pathParameters['slug']!),
+        builder: (_, state) => JoinScreen(slug: state.pathParameters['slug']!),
       ),
       GoRoute(
         path: '/t/:token',
@@ -37,8 +36,7 @@ class QueueLockApp extends StatelessWidget {
       GoRoute(path: '/staff', builder: (_, _) => const StaffScreen()),
       GoRoute(
         path: '/audit/:slug',
-        builder: (_, state) =>
-            AuditScreen(slug: state.pathParameters['slug']!),
+        builder: (_, state) => AuditScreen(slug: state.pathParameters['slug']!),
       ),
       GoRoute(
         path: '/staff/:queueId',
@@ -64,6 +62,7 @@ class QueueLockApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp.router(
       title: 'QueueLock',
+      debugShowCheckedModeBanner: false,
       theme: _theme(Brightness.light),
       darkTheme: _theme(Brightness.dark),
       themeMode: ThemeMode.system,
