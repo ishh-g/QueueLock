@@ -10,7 +10,11 @@ import 'src/web/routes/app_config_route.dart';
 
 void run(List<String> args) async {
   final pod = Serverpod(args);
+  await configureAppServices(pod);
+  await pod.start();
+}
 
+Future<void> configureAppServices(Serverpod pod) async {
   pod.initializeAuthServices(
     tokenManagerBuilders: [
       JwtConfigFromPasswords(),
@@ -72,6 +76,4 @@ void run(List<String> args) async {
       fallback: () => DatabaseCloudStorage('public'),
     ),
   );
-
-  await pod.start();
 }
